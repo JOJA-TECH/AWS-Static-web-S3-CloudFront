@@ -1,6 +1,11 @@
 variable "bucket_name" {
   description = "Nombre globalmente único del bucket S3."
   type        = string
+
+  validation {
+    condition     = can(regex("^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$", var.bucket_name))
+    error_message = "El nombre del bucket debe tener entre 3 y 63 caracteres, solo minúsculas, números y guiones."
+  }
 }
 
 variable "purpose" {
