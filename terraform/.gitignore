@@ -1,0 +1,31 @@
+# Directorios y archivos locales de Terraform
+.terraform/
+.terraform.tfstate.lock.info
+
+# Archivos de estado y respaldos: nunca versionar el estado
+*.tfstate
+*.tfstate.*
+
+# Registros de fallos
+crash.log
+crash.*.log
+
+# Archivos de variables con valores privados (se permite el ejemplo)
+*.tfvars
+*.tfvars.json
+!*.tfvars.example
+!*.tfvars.json.example
+
+# Planes generados
+*.tfplan
+*.tfplan.json
+
+# Archivos de override locales
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Configuración de la CLI de Terraform
+.terraformrc
+terraform.rc
