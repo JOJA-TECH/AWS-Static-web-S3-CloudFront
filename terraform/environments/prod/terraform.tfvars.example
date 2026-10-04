@@ -1,0 +1,11 @@
+# Ejemplo de valores para el ambiente prod.
+# Copia este archivo como terraform.tfvars y ajusta los valores:
+#   cp terraform.tfvars.example terraform.tfvars
+#
+# terraform.tfvars está excluido del repositorio mediante .gitignore.
+# NO incluir secretos ni credenciales aquí: la autenticación se resuelve
+# mediante el entorno de ejecución (perfil de AWS CLI, variables de entorno
+# o rol de IAM).
+
+project_name = "object-storage"
+aws_region   = "us-east-1"
