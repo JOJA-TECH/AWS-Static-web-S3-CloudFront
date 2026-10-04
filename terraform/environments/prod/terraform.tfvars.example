@@ -9,3 +9,8 @@
 
 project_name = "object-storage"
 aws_region   = "us-east-1"
+
+# Prefijo para los nombres de los buckets: <prefijo>-prod-activos, <prefijo>-prod-cargas
+# y <prefijo>-prod-logs. Los nombres de bucket son globales en AWS: descomenta
+# y ajusta si el nombre resultante ya existe.
+# bucket_name_prefix = "mi-empresa-object-storage"

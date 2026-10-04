@@ -9,3 +9,9 @@ variable "project_name" {
   type        = string
   default     = "object-storage"
 }
+
+variable "bucket_name_prefix" {
+  description = "Prefijo para los nombres de los buckets. Junto con el ambiente y el propósito forma el nombre globalmente único del bucket; ajústalo si el nombre resultante ya existe en AWS."
+  type        = string
+  default     = null
+}

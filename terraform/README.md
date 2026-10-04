@@ -72,6 +72,7 @@ terraform init        # Descarga proveedores y genera .terraform.lock.hcl
 terraform validate    # Verifica la sintaxis y coherencia de la configuración
 terraform plan        # Muestra el plan de cambios antes de aplicar
 terraform apply       # Aplica los cambios (revisar el plan antes de confirmar)
+terraform output      # Nombres y ARN de los buckets creados
 ```
 
 Verificación de formato y validación completa:
@@ -103,6 +104,26 @@ terraform fmt -check -recursive
   # }
   ```
 
+## Buckets del ambiente (prod)
+
+El ambiente `prod` crea tres buckets privados mediante el módulo `modules/s3`,
+todos con propiedad `BucketOwnerEnforced`, bloqueo de acceso público, cifrado
+SSE-S3 y versionado habilitados:
+
+| Módulo | Propósito | Nombre por defecto |
+|---|---|---|
+| `s3_activos` | Contenido estático de la aplicación (futuro origen de CloudFront) | `<prefijo>-prod-activos` |
+| `s3_cargas` | Archivos cargados por la aplicación o procesos autorizados | `<prefijo>-prod-cargas` |
+| `s3_logs` | Registros de acceso y operación de los servicios | `<prefijo>-prod-logs` |
+
+- El prefijo por defecto es `project_name`; se puede ajustar con la variable
+  `bucket_name_prefix` en `terraform.tfvars` (los nombres de bucket son
+  globales en AWS: si el nombre ya existe, cambia el prefijo).
+- Las etiquetas `Project`, `Environment` y `ManagedBy` se aplican a todos los
+  recursos mediante `default_tags`; cada bucket añade además `Purpose`.
+- Después de `terraform apply`, los nombres y ARN quedan disponibles con
+  `terraform output`.
+
 ## Módulos
 
 ### `modules/s3`
@@ -128,8 +149,8 @@ nombre, el ARN y el dominio regional del bucket (útil para CloudFront).
 
 La estructura está preparada para incorporar módulos independientes:
 
-- Buckets S3 del ambiente (activos, cargas y logs) componiendo `modules/s3`.
-- CloudFront y Origin Access Control (OAC).
+- Políticas de acceso del bucket de activos y Origin Access Control (OAC).
+- Distribución con CloudFront.
 - Certificados TLS con ACM.
 - DNS con Route 53.
 - Protección con AWS WAF.
