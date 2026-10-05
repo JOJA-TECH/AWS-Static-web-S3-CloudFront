@@ -25,6 +25,26 @@ module "s3_activos" {
 
   bucket_name = local.bucket_names.activos
   purpose     = "activos"
+
+  lifecycle_rules = [
+    {
+      id      = "storage-optimization"
+      enabled = true
+
+      transitions = [
+        {
+          days          = 30
+          storage_class = "STANDARD_IA"
+        },
+        {
+          days          = 90
+          storage_class = "GLACIER"
+        }
+      ]
+
+      expiration_days = 365
+    }
+  ]
 }
 
 module "s3_cargas" {

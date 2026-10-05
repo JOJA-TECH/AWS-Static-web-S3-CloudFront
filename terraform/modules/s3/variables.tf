@@ -56,30 +56,49 @@ variable "force_destroy" {
 
 variable "lifecycle_rules" {
   description = "Reglas de ciclo de vida opcionales para controlar retención y costos."
+
   type = list(object({
-    id                                 = string
-    enabled                            = optional(bool, true)
-    prefix                             = optional(string)
-    transition_days                    = optional(number)
-    transition_storage_class           = optional(string)
+    id     = string
+    enabled = optional(bool, true)
+    prefix  = optional(string)
+
+    transitions = optional(list(object({
+      days          = number
+      storage_class = string
+    })), [])
+
     expiration_days                    = optional(number)
     noncurrent_version_expiration_days = optional(number)
   }))
+
   default = []
 
   validation {
     condition = alltrue([
       for rule in var.lifecycle_rules :
-      rule.transition_days == null || rule.transition_storage_class != null
+      length(rule.transitions) > 0 ||
+      rule.expiration_days != null ||
+      rule.noncurrent_version_expiration_days != null
     ])
-    error_message = "Cada regla con transition_days definido debe indicar transition_storage_class."
+
+    error_message = "Cada regla de ciclo de vida debe definir al menos una acción."
   }
 
   validation {
     condition = alltrue([
       for rule in var.lifecycle_rules :
-      rule.expiration_days != null || rule.noncurrent_version_expiration_days != null || rule.transition_days != null
+      alltrue([
+        for transition in rule.transitions :
+        contains([
+          "STANDARD_IA",
+          "ONEZONE_IA",
+          "GLACIER",
+          "GLACIER_IR",
+          "DEEP_ARCHIVE"
+        ], transition.storage_class)
+      ])
     ])
-    error_message = "Cada regla de ciclo de vida debe definir al menos una acción: transition_days, expiration_days o noncurrent_version_expiration_days."
+
+    error_message = "La clase de almacenamiento indicada no es válida para una transición."
   }
 }
