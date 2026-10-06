@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title id="title">Logo de demostración</title>
+  <rect width="64" height="64" rx="16" fill="#2563eb"/>
+  <path d="M18 39h28L32 17 18 39Zm7 7h14l-7-11-7 11Z" fill="#fff"/>
+</svg>
