@@ -60,3 +60,14 @@ module "s3_logs" {
   bucket_name = local.bucket_names.logs
   purpose     = "logs"
 }
+
+module "cloudfront" {
+  source = "../../modules/cloudfront"
+
+  project_name                = var.project_name
+  bucket_id                   = module.s3_activos.bucket_name
+  bucket_arn                  = module.s3_activos.bucket_arn
+  bucket_regional_domain_name = module.s3_activos.bucket_regional_domain_name
+
+  tags = local.common_tags
+}

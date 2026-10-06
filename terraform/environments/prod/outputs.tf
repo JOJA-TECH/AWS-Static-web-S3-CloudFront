@@ -32,3 +32,13 @@ output "logs_bucket_arn" {
   description = "ARN del bucket de logs."
   value       = module.s3_logs.bucket_arn
 }
+
+output "cloudfront_domain_name" {
+  description = "Nombre de dominio asignado a la distribución CloudFront."
+  value       = module.cloudfront.distribution_domain_name
+}
+
+output "cloudfront_distribution_id" {
+  description = "ID de la distribución CloudFront."
+  value       = module.cloudfront.distribution_id
+}
