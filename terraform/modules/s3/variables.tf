@@ -58,7 +58,7 @@ variable "lifecycle_rules" {
   description = "Reglas de ciclo de vida opcionales para controlar retención y costos."
 
   type = list(object({
-    id     = string
+    id      = string
     enabled = optional(bool, true)
     prefix  = optional(string)
 
