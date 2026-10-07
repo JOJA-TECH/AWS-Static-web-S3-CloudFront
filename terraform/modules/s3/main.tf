@@ -88,7 +88,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "this" {
           days          = transition.value.days
           storage_class = transition.value.storage_class
         }
-      } 
+      }
 
       dynamic "expiration" {
         for_each = rule.value.expiration_days == null ? [] : [rule.value.expiration_days]

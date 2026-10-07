@@ -18,6 +18,11 @@ output "distribution_hosted_zone_id" {
   value       = aws_cloudfront_distribution.this.hosted_zone_id
 }
 
+output "is_ipv6_enabled" {
+  description = "Indica si la distribución sirve IPv6 (define si se crean registros alias AAAA)."
+  value       = aws_cloudfront_distribution.this.is_ipv6_enabled
+}
+
 output "oac_id" {
   description = "ID del Origin Access Control."
   value       = aws_cloudfront_origin_access_control.this.id
