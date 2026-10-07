@@ -24,17 +24,41 @@ locals {
   # Aliases de CloudFront: dominio principal más dominios alternativos.
   domain_aliases = local.custom_domain_enabled ? concat([var.domain_name], var.domain_subject_alternative_names) : []
 
-  # Zona Route 53 pública existente: zone_id directo o búsqueda por nombre.
-  route53_zone_id = local.custom_domain_enabled ? (var.route53_zone_id != null ? var.route53_zone_id : data.aws_route53_zone.selected[0].zone_id) : null
+  # Zona Route 53 pública: se crea una nueva, se usa un zone_id directo o se
+  # busca una existente por nombre.
+  route53_zone_id = local.custom_domain_enabled ? (
+    var.create_route53_zone ? aws_route53_zone.this[0].zone_id : (
+      var.route53_zone_id != null ? var.route53_zone_id : data.aws_route53_zone.selected[0].zone_id
+    )
+  ) : null
 }
 
-# Hosted Zone pública existente: se consulta solo cuando no se indica
-# route53_zone_id y se proporciona route53_zone_name.
+# Hosted Zone pública existente: se consulta solo cuando no se crea una nueva,
+# no se indica route53_zone_id y se proporciona route53_zone_name.
 data "aws_route53_zone" "selected" {
-  count = var.route53_zone_id == null && var.route53_zone_name != null ? 1 : 0
+  count = !var.create_route53_zone && var.route53_zone_id == null && var.route53_zone_name != null ? 1 : 0
 
   name         = var.route53_zone_name
   private_zone = false
+}
+
+# Hosted Zone pública nueva para el dominio personalizado. Tras crearla hay que
+# copiar sus name servers en el registrador del dominio para que ACM pueda
+# validar el certificado.
+resource "aws_route53_zone" "this" {
+  count = local.custom_domain_enabled && var.create_route53_zone ? 1 : 0
+
+  name    = var.domain_name
+  comment = "Hosted Zone publica para ${var.domain_name}"
+
+  tags = local.common_tags
+
+  # La Hosted Zone es la delegación del dominio en Route 53 y sobrevive a los
+  # despliegues: no se destruye con terraform destroy. Si de verdad quieres
+  # recrearla, comenta este bloque temporalmente.
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 # Buckets del ambiente: contenido estático, cargas de usuarios y logs. Todos

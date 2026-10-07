@@ -58,6 +58,11 @@ output "route53_zone_id" {
   value       = local.route53_zone_id
 }
 
+output "route53_name_servers" {
+  description = "Name servers de la Hosted Zone creada, para delegar el dominio en el registrador (vacío si la zona es existente o no se crea)."
+  value       = local.custom_domain_enabled && var.create_route53_zone ? aws_route53_zone.this[0].name_servers : []
+}
+
 output "route53_record_fqdns" {
   description = "FQDNs de los registros alias A/AAAA creados en Route 53."
   value       = local.custom_domain_enabled ? module.route53[0].record_fqdns : []

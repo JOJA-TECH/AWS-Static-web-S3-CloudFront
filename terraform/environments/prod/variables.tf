@@ -27,8 +27,8 @@ variable "domain_name" {
   }
 
   validation {
-    condition     = var.domain_name == null || var.route53_zone_id != null || var.route53_zone_name != null
-    error_message = "Si defines domain_name, indica route53_zone_id o route53_zone_name de la Hosted Zone pública existente."
+    condition     = var.domain_name == null || var.create_route53_zone || var.route53_zone_id != null || var.route53_zone_name != null
+    error_message = "Si defines domain_name, indica route53_zone_id, route53_zone_name o activa create_route53_zone para crear una Hosted Zone pública nueva."
   }
 }
 
@@ -48,6 +48,12 @@ variable "route53_zone_name" {
   description = "Nombre de la Hosted Zone pública existente para resolverla mediante data aws_route53_zone. Se ignora si route53_zone_id está definido."
   type        = string
   default     = null
+}
+
+variable "create_route53_zone" {
+  description = "Crea una Hosted Zone pública nueva para domain_name. Úsalo cuando el dominio no tenga aún zona en Route 53; luego hay que delegar los name servers en el registrador."
+  type        = bool
+  default     = false
 }
 
 variable "route53_validation_record_ttl" {
