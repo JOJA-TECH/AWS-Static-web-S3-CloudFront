@@ -10,3 +10,15 @@ provider "aws" {
   # ejecución (perfil de AWS CLI, variables de entorno AWS_* o rol de IAM),
   # sin incluir claves ni secretos en el código.
 }
+
+# Provider fijo en us-east-1 para recursos globales que lo exigen: ACM requiere
+# que los certificados usados por CloudFront se emitan en esa región, aunque el
+# provider principal (var.aws_region) apunte a otra.
+provider "aws" {
+  alias  = "us_east_1"
+  region = "us-east-1"
+
+  default_tags {
+    tags = local.common_tags
+  }
+}

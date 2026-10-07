@@ -14,3 +14,20 @@ aws_region   = "us-east-1"
 # y <prefijo>-prod-logs. Los nombres de bucket son globales en AWS: descomenta
 # y ajusta si el nombre resultante ya existe.
 # bucket_name_prefix = "mi-empresa-object-storage"
+
+# Dominio personalizado (opcional): crea un certificado ACM en us-east-1 con
+# validación DNS y registros alias en Route 53 hacia CloudFront. Si lo dejas
+# comentado, CloudFront usa su dominio y certificado por defecto.
+# domain_name = "ejemplo.com"
+
+# Dominios alternativos incluidos en el certificado y en los aliases de
+# CloudFront (por ejemplo, el subdominio www).
+# domain_subject_alternative_names = ["www.ejemplo.com"]
+
+# Hosted Zone pública existente en Route 53: indica el ID (preferente) o, en
+# su defecto, el nombre de la zona para resolverla automáticamente.
+# route53_zone_id = "ZXXXXXXXXXXXXXXXXXXXX"
+# route53_zone_name = "ejemplo.com"
+
+# TTL de los registros CNAME de validación del certificado.
+# route53_validation_record_ttl = 60
