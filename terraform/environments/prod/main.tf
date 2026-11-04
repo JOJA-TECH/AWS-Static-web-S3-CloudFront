@@ -80,6 +80,19 @@ module "s3_logs" {
   purpose     = "logs"
 }
 
+# Web ACL global para CloudFront: los grupos administrados solo cuentan
+# coincidencias mientras se observan posibles falsos positivos.
+module "waf" {
+  source = "../../modules/waf"
+
+  providers = {
+    aws.us_east_1 = aws.us_east_1
+  }
+
+  project_name = var.project_name
+  tags         = local.common_tags
+}
+
 # Certificado ACM en us-east-1 con validación DNS en la zona indicada.
 module "acm" {
   count  = local.custom_domain_enabled ? 1 : 0

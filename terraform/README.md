@@ -1,8 +1,8 @@
 # Infraestructura como código (Terraform)
 
 Infraestructura en **AWS** gestionada con Terraform para la plataforma de
-almacenamiento de objetos, con distribución global de contenido estático
-mediante CloudFront en etapas posteriores.
+almacenamiento de objetos y distribución global de contenido estático mediante
+CloudFront.
 
 ## Estructura del repositorio
 
@@ -19,16 +19,16 @@ terraform/
 │       ├── outputs.tf            # Valores expuestos al finalizar el despliegue
 │       └── terraform.tfvars.example   # Ejemplo de valores (sin secretos)
 └── modules/
-    └── s3/                       # Módulo reutilizable de buckets S3
-        ├── main.tf
-        ├── variables.tf
-        └── outputs.tf
+    ├── acm/                      # Certificados TLS y validación DNS
+    ├── cloudfront/               # Distribución y acceso privado a S3
+    ├── route53/                  # Registros DNS para CloudFront
+    ├── s3/                       # Módulo reutilizable de buckets S3
+    └── waf/                      # Web ACL para CloudFront en modo COUNT
 ```
 
 La organización separa los **ambientes de ejecución** (`environments/`) de los
-**módulos reutilizables** (`modules/`), de modo que se puedan agregar después
-módulos independientes para CloudFront, ACM, Route 53, WAF, Lambda@Edge y
-políticas de ciclo de vida sin reorganizar el proyecto.
+**módulos reutilizables** (`modules/`), que componen los recursos de AWS de
+forma independiente.
 
 ## Requisitos
 
@@ -145,14 +145,28 @@ El módulo crea el bucket con propiedad `BucketOwnerEnforced`, bloqueo completo
 de acceso público y cifrado del lado del servidor, y expone como outputs el
 nombre, el ARN y el dominio regional del bucket (útil para CloudFront).
 
+### `modules/waf`
+
+Crea un Web ACL con scope `CLOUDFRONT` en `us-east-1`, con los grupos
+administrados `AWSManagedRulesCommonRuleSet`,
+`AWSManagedRulesKnownBadInputsRuleSet` y
+`AWSManagedRulesAmazonIpReputationList`. Los tres usan `override_action` en
+modo `COUNT`; el Web ACL permite por defecto y habilita métricas de CloudWatch
+y solicitudes muestreadas para observar coincidencias.
+
+El ARN se expone como `waf_web_acl_arn`. En esta etapa el Web ACL aún no está
+asociado a la distribución CloudFront; por tanto, no inspecciona el tráfico
+hasta completar esa conexión en la siguiente etapa. El logging del WAF también
+se configurará posteriormente.
+
 ## Próximos pasos
 
-La estructura está preparada para incorporar módulos independientes:
-
-- Políticas de acceso del bucket de activos y Origin Access Control (OAC).
-- Distribución con CloudFront.
-- Certificados TLS con ACM.
-- DNS con Route 53.
-- Protección con AWS WAF.
-- Funciones Lambda@Edge.
-- Pipeline de CI/CD con GitHub Actions.
+- Asociar el Web ACL con la distribución CloudFront.
+- Ejecutar `terraform fmt`, `validate` y revisar el plan antes de aplicar.
+- Aplicar en un ambiente de prueba o en una ventana controlada; verificar el
+  dominio, las métricas y las solicitudes muestreadas.
+- Habilitar logging y alertas para WAF.
+- Cambiar progresivamente las reglas administradas de COUNT a bloqueo y
+  comprobar que la asociación persista después de la propagación de CloudFront.
+- Configurar GitHub Actions con OIDC y estado remoto antes de usarlo como
+  proceso de producción.

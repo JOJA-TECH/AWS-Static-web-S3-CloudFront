@@ -43,6 +43,11 @@ output "cloudfront_distribution_id" {
   value       = module.cloudfront.distribution_id
 }
 
+output "waf_web_acl_arn" {
+  description = "ARN del Web ACL de CloudFront (aún no asociado a la distribución)."
+  value       = module.waf.web_acl_arn
+}
+
 output "cloudfront_hosted_zone_id" {
   description = "ID de la zona hospedada de CloudFront para registros alias de Route 53."
   value       = module.cloudfront.distribution_hosted_zone_id
