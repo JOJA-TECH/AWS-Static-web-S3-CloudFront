@@ -44,7 +44,7 @@ output "cloudfront_distribution_id" {
 }
 
 output "waf_web_acl_arn" {
-  description = "ARN del Web ACL de CloudFront (aún no asociado a la distribución)."
+  description = "ARN del Web ACL asociado a CloudFront."
   value       = module.waf.web_acl_arn
 }
 

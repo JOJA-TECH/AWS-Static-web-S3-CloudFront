@@ -154,10 +154,9 @@ administrados `AWSManagedRulesCommonRuleSet`,
 modo `COUNT`; el Web ACL permite por defecto y habilita métricas de CloudWatch
 y solicitudes muestreadas para observar coincidencias.
 
-El ARN se expone como `waf_web_acl_arn`. En esta etapa el Web ACL aún no está
-asociado a la distribución CloudFront; por tanto, no inspecciona el tráfico
-hasta completar esa conexión en la siguiente etapa. El logging del WAF también
-se configurará posteriormente.
+El ARN se expone como `waf_web_acl_arn` y se asocia a la distribución
+CloudFront. En modo `COUNT`, el WAF registra las coincidencias sin bloquear
+solicitudes. El logging del WAF se configurará posteriormente.
 
 ## Próximos pasos
 

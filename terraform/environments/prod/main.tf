@@ -122,6 +122,7 @@ module "cloudfront" {
   # certificado por defecto de CloudFront).
   aliases             = local.domain_aliases
   acm_certificate_arn = local.custom_domain_enabled ? module.acm[0].certificate_arn : null
+  web_acl_id          = module.waf.web_acl_arn
 
   tags = local.common_tags
 }
