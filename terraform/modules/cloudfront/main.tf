@@ -74,6 +74,18 @@ resource "aws_cloudfront_distribution" "this" {
     cached_methods         = ["GET", "HEAD"]
     compress               = true
     cache_policy_id        = aws_cloudfront_cache_policy.assets.id
+
+    # Asociacion opcional de Lambda@Edge en origin-response. Se crea solo cuando
+    # se proporciona un ARN cualificado (version publicado). Si es null, no se
+    # asocia ninguna funcion.
+    dynamic "lambda_function_association" {
+      for_each = var.lambda_edge_qualified_arn != null ? [1] : []
+      content {
+        event_type   = "origin-response"
+        lambda_arn   = var.lambda_edge_qualified_arn
+        include_body = false
+      }
+    }
   }
 
   ordered_cache_behavior {
@@ -83,6 +95,18 @@ resource "aws_cloudfront_distribution" "this" {
     allowed_methods        = ["GET", "HEAD", "OPTIONS"]
     cached_methods         = ["GET", "HEAD"]
     cache_policy_id        = data.aws_cloudfront_cache_policy.caching_disabled.id
+
+    # Asociacion opcional de Lambda@Edge en origin-response. Se aplica a este
+    # comportamiento para garantizar que los encabezados de seguridad se
+    # agreguen tambien a las respuestas de index.html (sin cacheo).
+    dynamic "lambda_function_association" {
+      for_each = var.lambda_edge_qualified_arn != null ? [1] : []
+      content {
+        event_type   = "origin-response"
+        lambda_arn   = var.lambda_edge_qualified_arn
+        include_body = false
+      }
+    }
   }
 
   restrictions {

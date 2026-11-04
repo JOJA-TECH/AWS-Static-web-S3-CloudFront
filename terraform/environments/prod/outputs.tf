@@ -67,3 +67,28 @@ output "route53_record_fqdns" {
   description = "FQDNs de los registros alias A/AAAA creados en Route 53."
   value       = local.custom_domain_enabled ? module.route53[0].record_fqdns : []
 }
+
+output "lambda_edge_function_name" {
+  description = "Nombre de la funcion Lambda@Edge."
+  value       = module.lambda_edge.function_name
+}
+
+output "lambda_edge_function_arn" {
+  description = "ARN de la funcion Lambda@Edge (sin version)."
+  value       = module.lambda_edge.function_arn
+}
+
+output "lambda_edge_qualified_arn" {
+  description = "ARN cualificado de la version publicada de Lambda@Edge (usado por CloudFront en origin-response)."
+  value       = module.lambda_edge.qualified_arn
+}
+
+output "lambda_edge_version" {
+  description = "Numero de la version publicada de la funcion Lambda@Edge."
+  value       = module.lambda_edge.lambda_version
+}
+
+output "lambda_edge_role_arn" {
+  description = "ARN del rol IAM de la funcion Lambda@Edge."
+  value       = module.lambda_edge.role_arn
+}

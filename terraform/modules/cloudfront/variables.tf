@@ -47,6 +47,12 @@ variable "web_acl_id" {
   default     = null
 }
 
+variable "lambda_edge_qualified_arn" {
+  description = "ARN cualificado (con version) de la funcion Lambda@Edge para asociar en origin-response. Si es null, no se crea la asociacion."
+  type        = string
+  default     = null
+}
+
 variable "tags" {
   description = "Etiquetas adicionales para los recursos de CloudFront."
   type        = map(string)

@@ -39,19 +39,19 @@ variable "domain_subject_alternative_names" {
 }
 
 variable "route53_zone_id" {
-  description = "ID de la Hosted Zone pública existente en Route 53 donde se crean los registros. Si es null, la zona se resuelve con route53_zone_name."
+  description = "ID de la Hosted Zone pública existente en Route 53 donde se crean los registros. Si es null, la zona se resuelve con route53_zone_name. Se ignora si create_route53_zone está activo."
   type        = string
   default     = null
 }
 
 variable "route53_zone_name" {
-  description = "Nombre de la Hosted Zone pública existente para resolverla mediante data aws_route53_zone. Se ignora si route53_zone_id está definido."
+  description = "Nombre de la Hosted Zone pública: nombre de la zona a crear cuando create_route53_zone está activo, o nombre de la zona existente a resolver con data. Si es null y se crea, se usa domain_name. Para un sitio en subdominio, indica aquí el dominio padre (p. ej. joja.click)."
   type        = string
   default     = null
 }
 
 variable "create_route53_zone" {
-  description = "Crea una Hosted Zone pública nueva para domain_name. Úsalo cuando el dominio no tenga aún zona en Route 53; luego hay que delegar los name servers en el registrador."
+  description = "Crea una Hosted Zone pública nueva. Su nombre es route53_zone_name, o domain_name si no se indica. Luego hay que delegar los name servers en el registrador."
   type        = bool
   default     = false
 }
