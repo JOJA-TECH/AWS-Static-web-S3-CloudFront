@@ -10,6 +10,7 @@ on:
 env:
   TF_ROOT: terraform/environments/prod
   AWS_REGION: us-east-1
+  FRONTEND_DIR: frontend
 
 permissions:
   id-token: write   # OIDC
@@ -47,8 +48,23 @@ jobs:
           echo "distribution=$DISTRIBUTION" >> $GITHUB_OUTPUT
         working-directory: ${{ env.TF_ROOT }}
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+          cache-dependency-path: ${{ env.FRONTEND_DIR }}/pnpm-lock.yaml
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+        working-directory: ${{ env.FRONTEND_DIR }}
+
+      - name: Build frontend
+        run: pnpm run build
+        working-directory: ${{ env.FRONTEND_DIR }}
+
       - name: Sync static content to S3
-        run: aws s3 sync test-content/ "s3://${{ steps.outputs.outputs.bucket }}" --delete
+        run: aws s3 sync ${{ env.FRONTEND_DIR }}/dist/ "s3://${{ steps.outputs.outputs.bucket }}" --delete
 
       - name: Invalidate CloudFront cache
         run: aws cloudfront create-invalidation --distribution-id "${{ steps.outputs.outputs.distribution }}" --paths "/*"
