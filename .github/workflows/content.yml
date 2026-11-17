@@ -55,6 +55,9 @@ jobs:
           cache: "pnpm"
           cache-dependency-path: ${{ env.FRONTEND_DIR }}/pnpm-lock.yaml
 
+      - name: Install pnpm
+        run: corepack enable && corepack prepare pnpm@latest --activate
+
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
         working-directory: ${{ env.FRONTEND_DIR }}
