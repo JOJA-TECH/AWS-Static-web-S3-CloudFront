@@ -9,6 +9,8 @@ on:
 env:
   TF_ROOT: terraform/environments/prod
   AWS_REGION: us-east-1
+  TF_VAR_domain_name: joja.click
+  TF_VAR_route53_zone_name: joja.click
 
 permissions:
   id-token: write   # OIDC
