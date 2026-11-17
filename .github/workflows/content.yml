@@ -51,6 +51,4 @@ jobs:
         run: aws s3 sync test-content/ "s3://${{ steps.outputs.outputs.bucket }}" --delete
 
       - name: Invalidate CloudFront cache
-        run: aws cloudfront create-invalidation \
-          --distribution-id "${{ steps.outputs.outputs.distribution }}" \
-          --paths "/*"
+        run: aws cloudfront create-invalidation --distribution-id "${{ steps.outputs.outputs.distribution }}" --paths "/*"
