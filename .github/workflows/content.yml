@@ -57,9 +57,7 @@ jobs:
         run: corepack enable && corepack prepare pnpm@latest --activate
 
       - name: Install frontend dependencies
-        env:
-          PNPM_ENABLE_SCRIPTS: "true"
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --ignore-scripts
         working-directory: ${{ env.FRONTEND_DIR }}
 
       - name: Build frontend
