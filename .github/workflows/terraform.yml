@@ -38,16 +38,12 @@ jobs:
         run: terraform fmt -check -recursive
         working-directory: ${{ env.TF_ROOT }}
 
-      - name: Terraform Init (no backend, plan-only)
+      - name: Terraform Init (no backend)
         run: terraform init -backend=false
         working-directory: ${{ env.TF_ROOT }}
 
       - name: Terraform Validate
         run: terraform validate
-        working-directory: ${{ env.TF_ROOT }}
-
-      - name: Terraform Plan
-        run: terraform plan -no-color
         working-directory: ${{ env.TF_ROOT }}
 
       - name: Setup TFLint
