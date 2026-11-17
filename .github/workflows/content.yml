@@ -1,7 +1,9 @@
 name: Deploy Static Content
 
 on:
-  push:
+  workflow_run:
+    workflows: [Terraform CI/CD]
+    types: [completed]
     branches: [main]
   workflow_dispatch:
 
@@ -16,6 +18,7 @@ permissions:
 jobs:
   deploy-content:
     runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     env:
       TF_STATE_BUCKET: ${{ secrets.TF_STATE_BUCKET }}
       TF_STATE_LOCK_TABLE: ${{ secrets.TF_STATE_LOCK_TABLE }}
@@ -26,6 +29,7 @@ jobs:
         uses: hashicorp/setup-terraform@v2
         with:
           terraform_version: "1.15.9"
+          terraform_wrapper: false
 
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
