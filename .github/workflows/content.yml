@@ -1,0 +1,52 @@
+name: Deploy Static Content
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  TF_ROOT: terraform/environments/prod
+  AWS_REGION: us-east-1
+
+permissions:
+  id-token: write   # OIDC
+  contents: read
+
+jobs:
+  deploy-content:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: "1.15.9"
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Get infrastructure outputs
+        id: outputs
+        run: |
+          terraform init
+          BUCKET=$(terraform output -raw activos_bucket_name)
+          DISTRIBUTION=$(terraform output -raw cloudfront_distribution_id)
+          echo "bucket=$BUCKET" >> $GITHUB_OUTPUT
+          echo "distribution=$DISTRIBUTION" >> $GITHUB_OUTPUT
+        working-directory: ${{ env.TF_ROOT }}
+        env:
+          TF_VAR_state_bucket: ${{ secrets.TF_STATE_BUCKET }}
+          TF_VAR_state_lock_table: ${{ secrets.TF_STATE_LOCK_TABLE }}
+
+      - name: Sync static content to S3
+        run: aws s3 sync test-content/ "s3://${{ steps.outputs.outputs.bucket }}" --delete
+
+      - name: Invalidate CloudFront cache
+        run: aws cloudfront create-invalidation \
+          --distribution-id "${{ steps.outputs.outputs.distribution }}" \
+          --paths "/*"

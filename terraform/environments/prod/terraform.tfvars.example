@@ -31,3 +31,8 @@ aws_region   = "us-east-1"
 
 # TTL de los registros CNAME de validación del certificado.
 # route53_validation_record_ttl = 60
+
+# Estado remoto (S3 + DynamoDB). Crear el bucket y la tabla antes del primer
+# apply (el workflow de CI lo hace automáticamente si se pasan los secrets).
+# state_bucket = "mi-bucket-de-estado-terraform"
+# state_lock_table = "terraform-locks"
