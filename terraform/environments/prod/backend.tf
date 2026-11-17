@@ -1,9 +1,9 @@
 terraform {
+  # El backend no admite variables: bucket y tabla de lock se pasan con
+  # -backend-config desde los workflows.
   backend "s3" {
-    bucket         = var.state_bucket
-    key            = "prod/terraform.tfstate"
-    region         = var.aws_region
-    dynamodb_table = var.state_lock_table
-    encrypt        = true
+    key     = "prod/terraform.tfstate"
+    region  = "us-east-1"
+    encrypt = true
   }
 }
