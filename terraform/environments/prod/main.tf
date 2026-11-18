@@ -111,6 +111,21 @@ resource "aws_s3_bucket_cors_configuration" "activos" {
   }
 }
 
+# CORS para subidas directas al bucket de cargas desde el frontend.
+resource "aws_s3_bucket_cors_configuration" "cargas" {
+  bucket = module.s3_cargas.bucket_name
+
+  cors_rule {
+    allowed_headers = ["content-type", "x-amz-*"]
+    allowed_methods = ["GET", "HEAD", "PUT"]
+    allowed_origins = concat(
+      [for alias in local.domain_aliases : "https://${alias}"],
+      ["https://${module.cloudfront.distribution_domain_name}"],
+    )
+    max_age_seconds = 3000
+  }
+}
+
 module "s3_cargas" {
   source = "../../modules/s3"
 
@@ -200,8 +215,8 @@ module "cloudfront" {
 module "api" {
   source = "../../modules/api"
 
-  bucket_name    = module.s3_activos.bucket_name
-  bucket_arn     = module.s3_activos.bucket_arn
+  bucket_name    = module.s3_cargas.bucket_name
+  bucket_arn     = module.s3_cargas.bucket_arn
   allowed_origin = "*"
 }
 
