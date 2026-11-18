@@ -140,8 +140,9 @@ module "s3_cargas" {
 module "s3_logs" {
   source = "../../modules/s3"
 
-  bucket_name = local.bucket_names.logs
-  purpose     = "logs"
+  bucket_name             = local.bucket_names.logs
+  purpose                 = "logs"
+  enable_cloudfront_logging = true
 }
 
 # Web ACL global para CloudFront: los grupos administrados solo cuentan

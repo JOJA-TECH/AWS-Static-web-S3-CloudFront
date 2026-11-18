@@ -14,6 +14,12 @@ variable "purpose" {
   default     = null
 }
 
+variable "enable_cloudfront_logging" {
+  description = "Si true, habilita ACLs requeridas para que CloudFront escriba registros de acceso en este bucket (BucketOwnerPreferred + AWSLogDeliveryWrite ACL)."
+  type        = bool
+  default     = false
+}
+
 variable "tags" {
   description = "Etiquetas adicionales para el bucket."
   type        = map(string)

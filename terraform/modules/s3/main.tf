@@ -26,12 +26,25 @@ resource "aws_s3_bucket" "this" {
 
 # Propiedad de objetos: BucketOwnerEnforced deshabilita las ACL y garantiza
 # que el propietario del bucket sea dueño de todos los objetos cargados.
+# Cuando se habilita CloudFront logging, se usa BucketOwnerPreferred para
+# permitir que CloudFront escriba objetos mediante ACL.
 resource "aws_s3_bucket_ownership_controls" "this" {
   bucket = aws_s3_bucket.this.id
 
   rule {
-    object_ownership = "BucketOwnerEnforced"
+    object_ownership = var.enable_cloudfront_logging ? "BucketOwnerPreferred" : "BucketOwnerEnforced"
   }
+}
+
+# ACL para entrega de logs de CloudFront: concede escritura al servicio
+# LogDelivery de S3 solo cuando el bucket es destino de logs de CloudFront.
+resource "aws_s3_bucket_acl" "cloudfront_logs" {
+  count = var.enable_cloudfront_logging ? 1 : 0
+
+  bucket = aws_s3_bucket.this.id
+  acl    = "log-delivery-write"
+
+  depends_on = [aws_s3_bucket_ownership_controls.this]
 }
 
 # Bloqueo completo de todo acceso público al bucket.
