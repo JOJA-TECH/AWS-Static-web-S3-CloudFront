@@ -24,17 +24,45 @@ locals {
   # Aliases de CloudFront: dominio principal más dominios alternativos.
   domain_aliases = local.custom_domain_enabled ? concat([var.domain_name], var.domain_subject_alternative_names) : []
 
-  # Zona Route 53 pública existente: zone_id directo o búsqueda por nombre.
-  route53_zone_id = local.custom_domain_enabled ? (var.route53_zone_id != null ? var.route53_zone_id : data.aws_route53_zone.selected[0].zone_id) : null
+  # Nombre de la Hosted Zone: la zona del dominio padre (p. ej. joja.click)
+  # cuando el sitio vive en un subdominio (p. ej. infra.joja.click).
+  hosted_zone_name = coalesce(var.route53_zone_name, var.domain_name)
+
+  # Zona Route 53 pública: se crea una nueva, se usa un zone_id directo o se
+  # busca una existente por nombre.
+  route53_zone_id = local.custom_domain_enabled ? (
+    var.create_route53_zone ? aws_route53_zone.this[0].zone_id : (
+      var.route53_zone_id != null ? var.route53_zone_id : data.aws_route53_zone.selected[0].zone_id
+    )
+  ) : null
 }
 
-# Hosted Zone pública existente: se consulta solo cuando no se indica
-# route53_zone_id y se proporciona route53_zone_name.
+# Hosted Zone pública existente: se consulta solo cuando no se crea una nueva,
+# no se indica route53_zone_id y se proporciona route53_zone_name.
 data "aws_route53_zone" "selected" {
-  count = var.route53_zone_id == null && var.route53_zone_name != null ? 1 : 0
+  count = !var.create_route53_zone && var.route53_zone_id == null && var.route53_zone_name != null ? 1 : 0
 
   name         = var.route53_zone_name
   private_zone = false
+}
+
+# Hosted Zone pública nueva para el dominio (padre). Tras crearla hay que
+# copiar sus name servers en el registrador del dominio para que ACM pueda
+# validar el certificado.
+resource "aws_route53_zone" "this" {
+  count = local.custom_domain_enabled && var.create_route53_zone ? 1 : 0
+
+  name    = local.hosted_zone_name
+  comment = "Hosted Zone publica para ${local.hosted_zone_name}"
+
+  tags = local.common_tags
+
+  # La Hosted Zone es la delegación del dominio en Route 53 y sobrevive a los
+  # despliegues: no se destruye con terraform destroy. Si de verdad quieres
+  # recrearla, comenta este bloque temporalmente.
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 # Buckets del ambiente: contenido estático, cargas de usuarios y logs. Todos
@@ -64,6 +92,21 @@ module "s3_activos" {
       expiration_days = 365
     }
   ]
+}
+
+# CORS para las URLs prefirmadas: el navegador hace el PUT directo a S3.
+resource "aws_s3_bucket_cors_configuration" "activos" {
+  bucket = module.s3_activos.bucket_name
+
+  cors_rule {
+    allowed_headers = ["content-type", "x-amz-*"]
+    allowed_methods = ["GET", "HEAD", "PUT"]
+    allowed_origins = concat(
+      [for alias in local.domain_aliases : "https://${alias}"],
+      ["https://${module.cloudfront.distribution_domain_name}"],
+    )
+    max_age_seconds = 3000
+  }
 }
 
 module "s3_cargas" {
@@ -110,6 +153,25 @@ module "acm" {
   tags = local.common_tags
 }
 
+############################
+# Lambda@Edge: encabezados de seguridad en origin-response
+############################
+# La función se crea en us-east-1 (requisito de Lambda@Edge) usando el provider
+# alias aws.us_east_1. Se publica como una version inmutable y CloudFront usa
+# su ARN cualificado. No depende de ACM, Route 53 ni de un dominio personalizado.
+module "lambda_edge" {
+  source = "../../modules/lambda-edge"
+
+  providers = {
+    aws.us_east_1 = aws.us_east_1
+  }
+
+  project_name  = var.project_name
+  api_domain    = module.api.api_endpoint
+  upload_domain = "https://${module.s3_activos.bucket_name}.s3.amazonaws.com"
+  tags          = local.common_tags
+}
+
 module "cloudfront" {
   source = "../../modules/cloudfront"
 
@@ -124,7 +186,21 @@ module "cloudfront" {
   acm_certificate_arn = local.custom_domain_enabled ? module.acm[0].certificate_arn : null
   web_acl_id          = module.waf.web_acl_arn
 
+  # ARN cualificado de la version publicada de Lambda@Edge para agregar
+  # encabezados de seguridad en origin-response. Null si no se desea asociar.
+  lambda_edge_qualified_arn = module.lambda_edge.qualified_arn
+
   tags = local.common_tags
+}
+
+# API REST (Lambda + API Gateway HTTP API) que expone datos reales del bucket
+# de activos al frontend, sin credenciales de AWS en el navegador.
+module "api" {
+  source = "../../modules/api"
+
+  bucket_name    = module.s3_activos.bucket_name
+  bucket_arn     = module.s3_activos.bucket_arn
+  allowed_origin = "*"
 }
 
 # Registros alias A/AAAA en la zona Route 53 existente, apuntando a la

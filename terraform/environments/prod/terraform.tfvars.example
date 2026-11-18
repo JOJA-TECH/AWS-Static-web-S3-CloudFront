@@ -29,5 +29,16 @@ aws_region   = "us-east-1"
 # route53_zone_id = "ZXXXXXXXXXXXXXXXXXXXX"
 # route53_zone_name = "ejemplo.com"
 
+# Crea una Hosted Zone pública nueva para domain_name. Tras crearla hay que
+# copiar sus name servers (output route53_name_servers) en el registrador del
+# dominio. La Hosted Zone está protegida con prevent_destroy: no se elimina con
+# terraform destroy.
+# create_route53_zone = true
+
 # TTL de los registros CNAME de validación del certificado.
 # route53_validation_record_ttl = 60
+
+# Estado remoto (S3 + DynamoDB). Crear el bucket y la tabla antes del primer
+# apply (el workflow de CI lo hace automáticamente si se pasan los secrets).
+# state_bucket = "mi-bucket-de-estado-terraform"
+# state_lock_table = "terraform-locks"

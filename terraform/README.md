@@ -2,7 +2,8 @@
 
 Infraestructura en **AWS** gestionada con Terraform para la plataforma de
 almacenamiento de objetos y distribución global de contenido estático mediante
-CloudFront.
+CloudFront, con protección de AWS WAF y encabezados de seguridad vía
+Lambda@Edge.
 
 ## Estructura del repositorio
 
@@ -20,7 +21,8 @@ terraform/
 │       └── terraform.tfvars.example   # Ejemplo de valores (sin secretos)
 └── modules/
     ├── acm/                      # Certificados TLS y validación DNS
-    ├── cloudfront/               # Distribución y acceso privado a S3
+    ├── cloudfront/               # Distribución, OAC, WAF y Lambda@Edge
+    ├── lambda-edge/              # Encabezados de seguridad en origin-response
     ├── route53/                  # Registros DNS para CloudFront
     ├── s3/                       # Módulo reutilizable de buckets S3
     └── waf/                      # Web ACL para CloudFront en modo COUNT
@@ -72,7 +74,7 @@ terraform init        # Descarga proveedores y genera .terraform.lock.hcl
 terraform validate    # Verifica la sintaxis y coherencia de la configuración
 terraform plan        # Muestra el plan de cambios antes de aplicar
 terraform apply       # Aplica los cambios (revisar el plan antes de confirmar)
-terraform output      # Nombres y ARN de los buckets creados
+terraform output      # Nombres y ARN de los recursos creados
 ```
 
 Verificación de formato y validación completa:
@@ -112,7 +114,7 @@ SSE-S3 y versionado habilitados:
 
 | Módulo | Propósito | Nombre por defecto |
 |---|---|---|
-| `s3_activos` | Contenido estático de la aplicación (futuro origen de CloudFront) | `<prefijo>-prod-activos` |
+| `s3_activos` | Contenido estático de la aplicación (origen de CloudFront) | `<prefijo>-prod-activos` |
 | `s3_cargas` | Archivos cargados por la aplicación o procesos autorizados | `<prefijo>-prod-cargas` |
 | `s3_logs` | Registros de acceso y operación de los servicios | `<prefijo>-prod-logs` |
 
@@ -158,14 +160,35 @@ El ARN se expone como `waf_web_acl_arn` y se asocia a la distribución
 CloudFront. En modo `COUNT`, el WAF registra las coincidencias sin bloquear
 solicitudes. El logging del WAF se configurará posteriormente.
 
+### `modules/lambda-edge`
+
+Lambda@Edge agrega encabezados de seguridad HTTP a las respuestas de CloudFront
+en el evento `origin-response`. Se implementa como una función de Node.js
+(CommonJS) sin dependencias externas, empaquetada con `archive_file` y
+publicada como una versión inmutable (`publish = true`).
+
+Intercepta la respuesta del origen antes de que CloudFront la entregue al
+visitante y agrega o reemplaza estos encabezados:
+
+| Encabezado | Valor |
+|---|---|
+| `Strict-Transport-Security` | `max-age=63072000; includeSubDomains; preload` |
+| `X-Content-Type-Options` | `nosniff` |
+| `X-Frame-Options` | `DENY` |
+| `Content-Security-Policy` | `default-src 'self'; object-src 'none'; base-uri 'self'` |
+
+CloudFront no puede asociar `$LATEST`, por lo que Terraform publica una
+versión inmutable (`publish = true`) y la distribución usa el `qualified_arn`
+(ARN cualificado con número de versión).
+
 ## Próximos pasos
 
-- Asociar el Web ACL con la distribución CloudFront.
 - Ejecutar `terraform fmt`, `validate` y revisar el plan antes de aplicar.
 - Aplicar en un ambiente de prueba o en una ventana controlada; verificar el
-  dominio, las métricas y las solicitudes muestreadas.
+  dominio, las métricas de WAF y las solicitudes muestreadas.
 - Habilitar logging y alertas para WAF.
 - Cambiar progresivamente las reglas administradas de COUNT a bloqueo y
-  comprobar que la asociación persista después de la propagación de CloudFront.
-- Configurar GitHub Actions con OIDC y estado remoto antes de usarlo como
-  proceso de producción.
+  comprobar que la asociación con CloudFront persiste después de la
+  propagación.
+- Configurar GitHub Actions con OIDC y estado remoto en S3 antes de usarlo
+  como proceso de producción.
