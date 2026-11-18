@@ -185,7 +185,7 @@ module "lambda_edge" {
 
   project_name  = var.project_name
   api_domain    = module.api.api_endpoint
-  upload_domain = "https://${module.s3_activos.bucket_name}.s3.amazonaws.com"
+  upload_domain = "https://${module.s3_cargas.bucket_name}.s3.amazonaws.com"
   tags          = local.common_tags
 }
 
