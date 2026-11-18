@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   FileText,
@@ -51,8 +51,10 @@ export default function Dashboard() {
   };
 
   // Carga inicial
-  // eslint-disable-next-line @typescript-eslint/no-floating-promises
-  load();
+  useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-floating-promises
+    load();
+  }, [load]);
 
   if (loading && !stats) {
     return (
