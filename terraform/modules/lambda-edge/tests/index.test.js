@@ -20,7 +20,7 @@ const SECURITY_HEADERS = {
   'strict-transport-security': 'max-age=63072000; includeSubDomains; preload',
   'x-content-type-options': 'nosniff',
   'x-frame-options': 'DENY',
-  'content-security-policy': "default-src 'self'; object-src 'none'; base-uri 'self'",
+  'content-security-policy': "default-src 'self'; object-src 'none'; base-uri 'self'; connect-src 'self'",
 };
 
 /**
@@ -114,8 +114,24 @@ test('los valores de los encabezados son correctos', (t) => {
   assert.strictEqual(headerValues(response, 'X-Frame-Options')[0], 'DENY');
   assert.strictEqual(
     headerValues(response, 'Content-Security-Policy')[0],
-    "default-src 'self'; object-src 'none'; base-uri 'self'",
+    "default-src 'self'; object-src 'none'; base-uri 'self'; connect-src 'self'",
   );
+});
+
+test('la CSP incluye los origenes de API y subida del entorno', (t) => {
+  const previousApi = process.env.API_DOMAIN;
+  const previousUpload = process.env.UPLOAD_DOMAIN;
+  process.env.API_DOMAIN = 'https://api.example.com';
+  process.env.UPLOAD_DOMAIN = 'https://bucket.s3.amazonaws.com';
+  try {
+    const csp = headerValues(invoke(buildEvent({})), 'Content-Security-Policy')[0];
+    assert.ok(csp.includes("connect-src 'self' https://api.example.com https://bucket.s3.amazonaws.com"));
+  } finally {
+    if (previousApi === undefined) delete process.env.API_DOMAIN;
+    else process.env.API_DOMAIN = previousApi;
+    if (previousUpload === undefined) delete process.env.UPLOAD_DOMAIN;
+    else process.env.UPLOAD_DOMAIN = previousUpload;
+  }
 });
 
 test('conserva el status code original', (t) => {

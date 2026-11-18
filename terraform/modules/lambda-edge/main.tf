@@ -67,6 +67,13 @@ resource "aws_lambda_function" "edge" {
   description      = "Lambda@Edge: agrega encabezados de seguridad HTTP en respuestas origin-response de CloudFront."
   timeout          = 30
 
+  environment {
+    variables = {
+      API_DOMAIN    = var.api_domain
+      UPLOAD_DOMAIN = var.upload_domain
+    }
+  }
+
   tags = var.tags
 
   lifecycle {

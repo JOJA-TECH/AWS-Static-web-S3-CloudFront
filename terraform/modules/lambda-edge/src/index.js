@@ -12,22 +12,22 @@
 
 /**
  * Encabezados de seguridad que se agregan o reemplazan en cada respuesta.
- *
- * Nota sobre la CSP: el sitio de prueba (test-content/) referencia recursos
- * propios bajo /assets (style.css y logo.svg) sin origenes externos, ni
- * scripts inline, ni estilos inline. La politica base es restrictiva
- * (default-src 'self'; object-src 'none'; base-uri 'self') y se le anade
- * connect-src con el dominio de la API (variable de entorno API_DOMAIN) para
- * que el frontend pueda consultar archivos y estadisticas.
+ * La CSP se arma en cada invocacion con los origenes de las variables de
+ * entorno API_DOMAIN y UPLOAD_DOMAIN.
  */
 const SECURITY_HEADERS = {
   'Strict-Transport-Security':
     'max-age=63072000; includeSubDomains; preload',
   'X-Content-Type-Options': 'nosniff',
   'X-Frame-Options': 'DENY',
-  'Content-Security-Policy':
-    "default-src 'self'; object-src 'none'; base-uri 'self'; connect-src 'self' https://se8mfv1cll.execute-api.us-east-1.amazonaws.com",
 };
+
+function contentSecurityPolicy() {
+  const sources = ['\'self\'', process.env.API_DOMAIN, process.env.UPLOAD_DOMAIN]
+    .filter(Boolean)
+    .join(' ');
+  return `default-src 'self'; object-src 'none'; base-uri 'self'; connect-src ${sources}`;
+}
 
 /**
  * Establece un encabezado en el mapa de encabezados de CloudFront, evitando
@@ -63,6 +63,7 @@ exports.handler = (event, context, callback) => {
   Object.keys(SECURITY_HEADERS).forEach((name) => {
     setHeader(headers, name, SECURITY_HEADERS[name]);
   });
+  setHeader(headers, 'Content-Security-Policy', contentSecurityPolicy());
 
   // Devolver la respuesta conservando todo lo demas.
   callback(null, response);

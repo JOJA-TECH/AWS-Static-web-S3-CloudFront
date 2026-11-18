@@ -16,4 +16,14 @@ variable "tags" {
   default     = {}
 }
 
+variable "api_domain" {
+  description = "Origen de la API Gateway permitido en connect-src de la CSP."
+  type        = string
+}
+
+variable "upload_domain" {
+  description = "Origen S3 de las URLs prefijadas de subida permitido en connect-src de la CSP."
+  type        = string
+}
+
 
