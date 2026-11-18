@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   FileText,
@@ -30,7 +30,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
       const [s, a, b, h] = await Promise.all([
@@ -48,7 +48,7 @@ export default function Dashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   // Carga inicial
   useEffect(() => {
@@ -87,6 +87,9 @@ export default function Dashboard() {
   }
 
   const domain = import.meta.env.VITE_SITE_DOMAIN ?? 'joja.click';
+  const usedPct = stats.totalSizeBytes
+    ? Math.round((stats.usedSizeBytes / stats.totalSizeBytes) * 100)
+    : 0;
 
   return (
     <div className="space-y-6">
@@ -116,7 +119,7 @@ export default function Dashboard() {
           value={formatBytes(stats.usedSizeBytes)}
           subtitle={`de ${formatBytes(stats.totalSizeBytes)}`}
           icon={<HardDrive className="h-5 w-5" />}
-          trend={{ label: '34 % de uso', positive: false }}
+          trend={{ label: `${usedPct} % de uso`, positive: usedPct < 80 }}
         />
         <StatCard
           title="Cargas exitosas"
@@ -169,11 +172,14 @@ export default function Dashboard() {
                 const pct = stats.totalSizeBytes ? Math.round((t.size / stats.totalSizeBytes) * 100) : 0;
                 return (
                   <div key={t.type} className="flex items-center gap-3">
-                    <span className="w-24 text-[11px] font-medium text-neutral-700">{t.type}</span>
-                    <div className="flex-1 h-2 rounded-full bg-neutral-200 overflow-hidden">
-                      <div className="h-full bg-brand-600" style={{ width: `${pct}%` }} />
+                    <span className="w-20 shrink-0 text-[11px] font-medium text-neutral-700">{t.type}</span>
+                    <div className="flex-1 h-2.5 rounded-full bg-neutral-200 overflow-hidden">
+                      <div
+                        className="h-full bg-brand-600 transition-[width] duration-500"
+                        style={{ width: `${pct}%` }}
+                      />
                     </div>
-                    <span className="w-10 text-right text-[11px] font-mono text-neutral-600">
+                    <span className="w-24 shrink-0 text-right text-[11px] font-mono text-neutral-600 whitespace-nowrap">
                       {formatBytes(t.size)} ({pct}%)
                     </span>
                   </div>
@@ -191,6 +197,9 @@ export default function Dashboard() {
             <CardTitle className="text-lg">Estado de los buckets</CardTitle>
           </CardHeader>
           <CardContent>
+            {buckets.length === 0 ? (
+              <p className="text-sm text-neutral-500">Sin datos de buckets disponibles.</p>
+            ) : (
             <div className="space-y-3">
               {buckets.map((b) => (
                 <div key={b.name} className="flex items-center justify-between">
@@ -218,6 +227,7 @@ export default function Dashboard() {
                 </div>
               ))}
             </div>
+            )}
           </CardContent>
         </Card>
 

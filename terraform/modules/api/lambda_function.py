@@ -107,6 +107,13 @@ def get_stats(origin=""):
     total_size = 0
     total_files = 0
     continuation_token = None
+    image_exts = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg"}
+    doc_exts = {".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".txt", ".md", ".csv", ".json"}
+    by_type = {
+        "Imágenes": {"count": 0, "size": 0},
+        "Documentos": {"count": 0, "size": 0},
+        "Otros": {"count": 0, "size": 0},
+    }
 
     while True:
         kwargs = {"Bucket": BUCKET}
@@ -114,8 +121,19 @@ def get_stats(origin=""):
             kwargs["ContinuationToken"] = continuation_token
         result = s3.list_objects_v2(**kwargs)
         for obj in result.get("Contents", []):
+            size = obj.get("Size", 0)
+            key = obj["Key"]
             total_files += 1
-            total_size += obj.get("Size", 0)
+            total_size += size
+            ext = "." + key.rsplit(".", 1)[-1].lower() if "." in key else ""
+            if ext in image_exts:
+                group = "Imágenes"
+            elif ext in doc_exts:
+                group = "Documentos"
+            else:
+                group = "Otros"
+            by_type[group]["count"] += 1
+            by_type[group]["size"] += size
         if not result.get("IsTruncated"):
             break
         continuation_token = result["NextContinuationToken"]
@@ -127,9 +145,7 @@ def get_stats(origin=""):
         "usedSizeBytes": used,
         "availableSizeBytes": total_size - used,
         "filesByType": [
-            {"type": "Imágenes", "count": max(1, total_files // 3), "size": 0},
-            {"type": "Documentos", "count": max(1, total_files // 3), "size": 0},
-            {"type": "Otros", "count": max(1, total_files // 3), "size": 0},
+            {"type": name, **values} for name, values in by_type.items()
         ],
         "recentUploads": 0,
         "pendingUploads": 0,

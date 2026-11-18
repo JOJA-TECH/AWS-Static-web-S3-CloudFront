@@ -76,12 +76,12 @@ export default function Navbar() {
       {/* Mobile sheet */}
       <div
         className={cn(
-          'fixed inset-0 z-[60] lg:hidden',
-          open ? 'translate-x-0' : '-translate-x-full transition-transform duration-300',
+          'fixed inset-0 z-[60] lg:hidden transition-transform duration-300',
+          open ? 'translate-x-0' : '-translate-x-full pointer-events-none',
         )}
       >
         <div className="fixed inset-0 bg-neutral-900/60 backdrop-blur-sm" onClick={() => setOpen(false)} />
-        <div className="fixed inset-y-0 left-0 z-[61] w-full max-w-md bg-white border-r border-neutral-200 transform translate-x-full transition-transform duration-300">
+        <div className="fixed inset-y-0 left-0 z-[61] w-full max-w-md bg-white border-r border-neutral-200">
           <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-100">
             <div className="flex items-center gap-2 font-bold text-brand-900 tracking-tight">
               <div className="h-7 w-7 rounded-xl bg-brand-100 flex items-center justify-center text-brand-600 font-bold">

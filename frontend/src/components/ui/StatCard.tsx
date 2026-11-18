@@ -16,13 +16,13 @@ export function StatCard({ title, value, subtitle, icon, trend, className }: Sta
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm text-neutral-500">{title}</p>
-          <div className="flex items-baseline mt-1">
+          <div className="flex flex-wrap items-baseline gap-x-2 mt-1">
             <span className="text-3xl font-bold text-neutral-900 tracking-tight">{value}</span>
-            {subtitle && <span className="ml-1 text-sm text-neutral-500">{subtitle}</span>}
+            {subtitle && <span className="text-sm text-neutral-500 whitespace-nowrap">{subtitle}</span>}
           </div>
           {trend && (
-            <p className="mt-1 text-xs font-medium">
-              {trend.positive ? 'text-green-600' : 'text-red-600'} ▲ {trend.label}
+            <p className={cn('mt-2 text-xs font-medium', trend.positive ? 'text-green-600' : 'text-red-600')}>
+              ▲ {trend.label}
             </p>
           )}
         </div>

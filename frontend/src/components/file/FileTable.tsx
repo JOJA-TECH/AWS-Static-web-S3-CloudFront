@@ -5,6 +5,7 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { useFiles } from '@/hooks/useFiles';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { cn } from '@/lib/utils';
 
 export function FileTable() {
   const {
@@ -98,7 +99,7 @@ export function FileTable() {
             <ChevronUp className="h-4 w-4" /> <ChevronDown className="h-4 w-4" />
           </Button>
           <Button onClick={refresh} className="h-10 w-10" title="Actualizar">
-            <RefreshCw className="h-4 w-4 animate-spin" />
+            <RefreshCw className={cn('h-4 w-4', loading && 'animate-spin')} />
           </Button>
         </div>
       </div>
