@@ -94,6 +94,6 @@ output "lambda_edge_role_arn" {
 }
 
 output "api_endpoint" {
-  description = "URL base de la API Gateway HTTP API (datos reales para el frontend)."
-  value       = module.api.api_endpoint
+  description = "URL base de la API Gateway HTTP API incluyendo el stage (datos reales para el frontend)."
+  value       = "${module.api.api_endpoint}/prod"
 }
