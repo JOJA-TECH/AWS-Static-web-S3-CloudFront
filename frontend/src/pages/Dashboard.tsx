@@ -337,36 +337,25 @@ export default function Dashboard() {
 function StorageChart({ used, total }: { used: number; total: number }) {
   const pct = total ? Math.min(100, (used / total) * 100) : 0;
   return (
-    <svg className="w-full h-28" viewBox="0 0 100 40" role="img" aria-label="Uso de almacenamiento">
-      <defs>
-        <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stopColor="#2563eb" />
-          <stop offset="100%" stopColor="#1d4ed8" />
-        </linearGradient>
-      </defs>
-      <rect x="0" y="10" width="100" height="20" fill="#e2e8f0" rx="4" />
-      <rect x="0" y="10" width={pct} height="20" fill="url(#grad)" rx="4" />
-      <text x="6" y="8" fontSize="10" fill="#64748b" fontFamily="system-ui">
-        0 B
-      </text>
-      <text x="50" y="8" fontSize="10" fill="#64748b" fontFamily="system-ui" textAnchor="middle">
-        {formatBytes(total / 2)}
-      </text>
-      <text x="94" y="8" fontSize="10" fill="#64748b" fontFamily="system-ui" textAnchor="end">
-        {formatBytes(total)}
-      </text>
-      <text
-        x={Math.min(94, 6 + pct)}
-        y="32"
-        fontSize="10"
-        fill="#172554"
-        fontFamily="system-ui"
-        fontWeight="600"
-        textAnchor={pct > 50 ? 'end' : 'start'}
-      >
-        {formatBytes(used)} ({pct.toFixed(0)}%)
-      </text>
-    </svg>
+    <div className="space-y-2 py-1" role="img" aria-label="Uso de almacenamiento">
+      <div className="flex items-baseline justify-between gap-3 text-xs">
+        <span className="font-semibold text-neutral-900">
+          {formatBytes(used)} ({pct.toFixed(0)}%)
+        </span>
+        <span className="text-neutral-500">de {formatBytes(total)}</span>
+      </div>
+      <div className="h-7 rounded-lg bg-neutral-200 overflow-hidden">
+        <div
+          className="h-full bg-brand-600 transition-[width] duration-500"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <div className="flex justify-between gap-2 text-[11px] text-neutral-400">
+        <span>0 B</span>
+        <span>{formatBytes(total / 2)}</span>
+        <span>{formatBytes(total)}</span>
+      </div>
+    </div>
   );
 }
 
