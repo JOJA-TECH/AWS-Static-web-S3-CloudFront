@@ -77,6 +77,16 @@ def list_files(event, origin=""):
     for obj in result.get("Contents", []):
         size = obj.get("Size", 0)
         key = obj["Key"]
+        # URL presignada para abrir/descargar el objeto directamente desde S3
+        # (CloudFront solo tiene como origen el bucket de activos, no de cargas).
+        try:
+            signed_url = s3.generate_presigned_url(
+                ClientMethod="get_object",
+                Params={"Bucket": BUCKET, "Key": key},
+                ExpiresIn=300,  # 5 minutos
+            )
+        except ClientError:
+            signed_url = None
         files.append({
             "id": key,
             "key": key,
@@ -87,6 +97,7 @@ def list_files(event, origin=""):
             "lastModified": obj["LastModified"].isoformat(),
             "status": "available",
             "etag": obj.get("ETag", "").strip('"'),
+            "signed_url": signed_url,
         })
 
     next_marker = result.get("NextContinuationToken")

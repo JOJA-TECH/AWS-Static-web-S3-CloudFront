@@ -94,7 +94,7 @@ export const realFilesService: FilesService = {
       lastModified: it.lastModified ?? new Date().toISOString(),
       status: it.status ?? 'available',
       etag: it.etag,
-      url: `https://${SITE_DOMAIN}/${it.key}`,
+      url: it.signed_url ?? `https://${SITE_DOMAIN}/${it.key}`,
     }));
 
     const page = query?.page ?? 1;
