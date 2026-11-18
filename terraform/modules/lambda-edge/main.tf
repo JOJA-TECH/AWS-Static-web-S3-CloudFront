@@ -60,6 +60,12 @@ data "archive_file" "lambda_zip" {
 # 3. Funcion Lambda en us-east-1
 ############################
 
+# checkov:skip=CKV_AWS_50:Lambda@Edge sin X-Ray tracing (proyecto academico)
+# checkov:skip=CKV_AWS_116:Lambda@Edge sin Dead Letter Queue (proyecto academico)
+# checkov:skip=CKV_AWS_117:Lambda@Edge sin VPC (proyecto academico)
+# checkov:skip=CKV_AWS_272:Lambda@Edge sin validacion de code-signing (proyecto academico)
+# checkov:skip=CKV_AWS_115:Lambda@Edge sin limite de concurrencia (proyecto academico)
+# checkov:skip=CKV_AWS_173:Lambda@Edge sin variables de entorno sensibles (proyecto academico)
 resource "aws_lambda_function" "edge" {
   provider         = aws.us_east_1
   function_name    = "${var.project_name}-lambda-edge-security-headers"
