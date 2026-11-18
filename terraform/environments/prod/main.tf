@@ -169,7 +169,7 @@ module "api" {
 
   bucket_name   = module.s3_activos.bucket_name
   bucket_arn    = module.s3_activos.bucket_arn
-  allowed_origin = local.custom_domain_enabled ? "https://${var.domain_name}" : "*"
+  allowed_origin = "*"
 }
 
 # Registros alias A/AAAA en la zona Route 53 existente, apuntando a la

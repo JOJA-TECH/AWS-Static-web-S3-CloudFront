@@ -8,45 +8,55 @@ BUCKET = os.environ["BUCKET_NAME"]
 ALLOWED_ORIGIN = os.environ.get("ALLOWED_ORIGIN", "*")
 
 
-def _cors():
+def _cors(origin=None):
+    """Devuelve encabezados CORS. Refleja el Origin de la petición si está permitido."""
+    if origin == ALLOWED_ORIGIN:
+        ao = origin
+    else:
+        ao = ALLOWED_ORIGIN
     return {
-        "Access-Control-Allow-Origin": ALLOWED_ORIGIN,
+        "Access-Control-Allow-Origin": ao,
         "Access-Control-Allow-Headers": "content-type",
         "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+        "Vary": "Origin",
     }
 
 
-def response(status_code, body):
+def response(status_code, body, origin=None):
     return {
         "statusCode": status_code,
-        "headers": {**{"Content-Type": "application/json"}, **_cors()},
+        "headers": {**{"Content-Type": "application/json"}, **_cors(origin)},
         "body": json.dumps(body),
     }
 
 
 def lambda_handler(event, context):
+    # Extraer el Origin de la petición para reflejarlo en CORS
+    headers = event.get("headers", {}) or {}
+    origin = headers.get("origin") or headers.get("Origin") or ""
+
     # Soporte preflight CORS
     if event.get("requestContext", {}).get("http", {}).get("method") == "OPTIONS":
-        return response(200, {"ok": True})
+        return response(200, {"ok": True}, origin=origin)
 
     path = event.get("rawPath") or event.get("path") or "/"
     method = event.get("requestContext", {}).get("http", {}).get("method", "GET")
 
     try:
         if method == "GET" and path.endswith("/api/files"):
-            return list_files(event)
+            return list_files(event, origin=origin)
         if method == "GET" and path.endswith("/api/stats"):
-            return get_stats()
+            return get_stats(origin=origin)
         if method == "POST" and path.endswith("/api/upload/url"):
-            return request_upload_url(event)
+            return request_upload_url(event, origin=origin)
         if method == "POST" and path.endswith("/api/upload/complete"):
-            return upload_completed(event)
-        return response(404, {"error": "not found", "path": path})
+            return upload_completed(event, origin=origin)
+        return response(404, {"error": "not found", "path": path}, origin=origin)
     except ClientError as e:
-        return response(500, {"error": str(e)})
+        return response(500, {"error": str(e)}, origin=origin)
 
 
-def list_files(event):
+def list_files(event, origin=""):
     params = event.get("queryStringParameters") or {}
     prefix = params.get("prefix", "")
     marker = params.get("marker")
@@ -90,10 +100,10 @@ def list_files(event):
             "nextMarker": next_marker,
             "hasMore": result.get("IsTruncated", False),
         },
-    })
+    }, origin=origin)
 
 
-def get_stats():
+def get_stats(origin=""):
     total_size = 0
     total_files = 0
     continuation_token = None
@@ -124,7 +134,7 @@ def get_stats():
         "recentUploads": 0,
         "pendingUploads": 0,
         "failedUploads": 0,
-    })
+    }, origin=origin)
 
 
 def _content_type(key):
@@ -139,12 +149,12 @@ def _content_type(key):
     return mapping.get(ext, "application/octet-stream")
 
 
-def request_upload_url(event):
-    """Genera una URL prefirmada para PUT directo a S3 (sin credenciales en el navegador)."""
+def request_upload_url(event, origin=""):
+    """Genera una URL prefijada para PUT directo a S3 (sin credenciales en el navegador)."""
     try:
         body = json.loads(event.get("body") or "{}")
     except json.JSONDecodeError:
-        return response(400, {"error": "body JSON invalido"})
+        return response(400, {"error": "body JSON invalido"}, origin=origin)
 
     file_name = body.get("fileName", "archivo")
     content_type = body.get("contentType", "application/octet-stream")
@@ -159,24 +169,24 @@ def request_upload_url(event):
             ExpiresIn=900,  # 15 minutos
         )
     except ClientError as e:
-        return response(500, {"error": str(e)})
+        return response(500, {"error": str(e)}, origin=origin)
 
     return response(200, {
         "uploadUrl": upload_url,
         "objectKey": object_key,
-    })
+    }, origin=origin)
 
 
-def upload_completed(event):
+def upload_completed(event, origin=""):
     """Notifica que una carga se completo (registro opcional para auditoria)."""
     try:
         body = json.loads(event.get("body") or "{}")
     except json.JSONDecodeError:
-        return response(400, {"error": "body JSON invalido"})
+        return response(400, {"error": "body JSON invalido"}, origin=origin)
 
     object_key = body.get("objectKey")
     if not object_key:
-        return response(400, {"error": "objectKey requerido"})
+        return response(400, {"error": "objectKey requerido"}, origin=origin)
 
     # Aquí podría escribirse en DynamoDB o notificar a CloudFront para invalidar cache.
-    return response(200, {"ok": True, "objectKey": object_key})
+    return response(200, {"ok": True, "objectKey": object_key}, origin=origin)
