@@ -80,6 +80,7 @@ jobs:
     environment: production
     env:
       TF_STATE_BUCKET: ${{ secrets.TF_STATE_BUCKET }}
+      TF_VAR_monitoring_alert_email: ${{ secrets.MONITORING_ALERT_EMAIL }}
     steps:
       - uses: actions/checkout@v7
 
