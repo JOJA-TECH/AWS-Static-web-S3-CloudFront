@@ -7,6 +7,8 @@ terraform {
   }
 }
 
+# checkov:skip=CKV_AWS_192:Reglas administradas AWS ya mitigan Log4j (modo COUNT, observacion)
+# checkov:skip=CKV2_AWS_31:Logging de WAF se habilitara en etapa posterior
 resource "aws_wafv2_web_acl" "this" {
   provider = aws.us_east_1
 

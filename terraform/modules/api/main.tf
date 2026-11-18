@@ -159,6 +159,7 @@ resource "aws_apigatewayv2_route" "upload_complete_options" {
   authorization_type = "NONE"
 }
 
+# checkov:skip=CKV_AWS_76:Access logging de API Gateway no requerido (proyecto academico)
 resource "aws_apigatewayv2_stage" "api" {
   api_id      = aws_apigatewayv2_api.api.id
   name        = "prod"

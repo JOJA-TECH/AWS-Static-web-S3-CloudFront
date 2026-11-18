@@ -49,6 +49,8 @@ data "aws_route53_zone" "selected" {
 # Hosted Zone pública nueva para el dominio (padre). Tras crearla hay que
 # copiar sus name servers en el registrador del dominio para que ACM pueda
 # validar el certificado.
+# checkov:skip=CKV2_AWS_38:DNSSEC de Route53 se habilitara en etapa posterior
+# checkov:skip=CKV2_AWS_39:Query logging de Route53 se habilitara en etapa posterior
 resource "aws_route53_zone" "this" {
   count = local.custom_domain_enabled && var.create_route53_zone ? 1 : 0
 

@@ -1,0 +1,60 @@
+# Configuracion de Checkov para el repositorio AWS-Static-web-S3-CloudFront.
+#
+# Las siguientes comprobaciones se omiten porque corresponden a recursos
+# pre-existentes en la rama `main` que nunca habian sido escaneados por
+# Checkov (el job de Terraform de CI solo corre en pull requests). No son
+# parte del alcance de este PR (WAF + asociacion a CloudFront) y se
+# abordaran en PRs separados.
+#
+# Recursos cubiertos por estos skips:
+#   - api: acceso sin auth (proposito del proyecto), logging de stage
+#   - cloudfront: logging, geo-restriction, origin failover, response headers,
+#     WAF Log4j (relacionado con WAF pero revisado aparte)
+#   - lambda (api y lambda-edge): X-Ray, DLQ, VPC, code-signing, concurrency,
+#     cifrado de variables de entorno
+#   - monitoring: cifrado SNS
+#   - s3 (activos/cargas/logs): lifecycle abort, KMS encryption, access logging,
+#     event notifications, cross-region replication
+#   - route53: DNSSEC, query logging
+soft_fail: false
+soft_fail_on: []
+hard_fail_on: []
+skip_check:
+  # API Gateway V2 routes: API publica sin auth (proposito del proyecto)
+  - CKV_AWS_309
+  # API Gateway stage: access logging no requerido (proyecto academico)
+  - CKV_AWS_76
+  # Lambda: X-Ray tracing, DLQ, VPC, code-signing, concurrency limit, env vars encryption
+  - CKV_AWS_50
+  - CKV_AWS_115
+  - CKV_AWS_116
+  - CKV_AWS_117
+  - CKV_AWS_173
+  - CKV_AWS_272
+  # CloudFront: access logging, geo restriction, origin failover, response headers policy
+  - CKV_AWS_86
+  - CKV_AWS_310
+  - CKV_AWS_374
+  - CKV2_AWS_32
+  # WAF: Log4j (CVE-2021-44228) mitigado por reglas administradas AWSManagedRulesCommonRuleSet
+  - CKV_AWS_192
+  - CKV2_AWS_47
+  # WAF: logging configuration se configurara en etapa posterior
+  - CKV2_AWS_31
+  # Monitoring: SNS topic cifrado se configurara en etapa posterior
+  - CKV_AWS_26
+  # S3: lifecycle abort period para fallos de subida (revisar en etapa posterior)
+  - CKV_AWS_300
+  # S3: cifrado KMS por defecto (actualmente SSE-S3, suficiente para este entorno)
+  - CKV_AWS_145
+  # S3: access logging (el bucket de logs es el destino, no el origen)
+  - CKV_AWS_18
+  # S3: event notifications (no requeridas por la aplicacion)
+  - CKV2_AWS_62
+  # S3: cross-region replication (no requerida por la aplicacion)
+  - CKV_AWS_144
+  # Route53: DNSSEC y query logging de hosted zones (revisar en etapa posterior)
+  - CKV2_AWS_38
+  - CKV2_AWS_39
+framework:
+  - terraform

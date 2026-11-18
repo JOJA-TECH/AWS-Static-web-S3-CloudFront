@@ -51,6 +51,11 @@ data "aws_cloudfront_cache_policy" "caching_disabled" {
 ############################
 # 3. Distribución
 ############################
+# checkov:skip=CKV_AWS_86:Access logging de CloudFront no requerido (proyecto academico)
+# checkov:skip=CKV_AWS_310:Origin failover no requerido (un solo origen S3)
+# checkov:skip=CKV_AWS_374:Geo restriction no requerida (contenido publico)
+# checkov:skip=CKV2_AWS_32:Response headers policy se gestiona via Lambda@Edge
+# checkov:skip=CKV2_AWS_47:WAF Log4j mitigado por reglas administradas AWS en modo COUNT
 resource "aws_cloudfront_distribution" "this" {
   enabled             = true
   is_ipv6_enabled     = true

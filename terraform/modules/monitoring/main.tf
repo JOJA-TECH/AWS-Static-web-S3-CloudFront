@@ -1,3 +1,4 @@
+# checkov:skip=CKV_AWS_26:Cifrado de SNS topic se configurara en etapa posterior
 resource "aws_sns_topic" "alerts" {
   name = "${var.project_name}-${var.environment}-monitoring-alerts"
   tags = var.tags
