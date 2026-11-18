@@ -40,3 +40,7 @@ terraform.rc
 # Lambda zip generado en runtime por archive_file
 terraform/modules/api/api_lambda.zip
 terraform/modules/lambda-edge/lambda-edge-function.zip
+
+# Python (self-checks del lambda)
+__pycache__/
+*.pyc
