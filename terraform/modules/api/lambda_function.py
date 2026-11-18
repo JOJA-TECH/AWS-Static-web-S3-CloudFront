@@ -16,7 +16,7 @@ def _cors(origin=None):
         ao = ALLOWED_ORIGIN
     return {
         "Access-Control-Allow-Origin": ao,
-        "Access-Control-Allow-Headers": "content-type",
+        "Access-Control-Allow-Headers": "content-type, x-site-domain",
         "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
         "Vary": "Origin",
     }
