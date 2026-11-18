@@ -18,6 +18,10 @@ resource "aws_route53_record" "alias_a" {
   name    = each.value
   type    = "A"
 
+  lifecycle {
+    ignore_changes = [zone_id]
+  }
+
   alias {
     name                   = var.target_dns_name
     zone_id                = var.target_zone_id
@@ -35,6 +39,10 @@ resource "aws_route53_record" "alias_aaaa" {
   zone_id = var.zone_id
   name    = each.value
   type    = "AAAA"
+
+  lifecycle {
+    ignore_changes = [zone_id]
+  }
 
   alias {
     name                   = var.target_dns_name

@@ -4,18 +4,21 @@
  * IMPORTANTE (seguridad):
  * - Este archivo NO contiene credenciales de AWS (claves de acceso, secretos,
  *   tokens temporales ni sesiones).
- * - Toda la comunicación con AWS (S3, CloudFront, etc.) debe hacerse a través
- *   de una API autorizada (backend) que genere URLs prefirmadas o gestione las
- *   operaciones en nombre del usuario.
- * - Mientras no exista la API real, se usa un adaptador MOCK claramente
- *   separado. Los datos son simulados y no se persisten.
+ * - Toda la comunicación con AWS (S3, CloudFront, etc.) se hace a través de la
+ *   API Gateway + Lambda (backend) que tiene su propio rol de IAM. El navegador
+ *   nunca toca AWS directamente.
  *
- * Cuando se disponga del backend, implementar estas mismas interfaces
- * llamando a los endpoints reales y eliminar la carpeta services/mock.
+ * Endpoints consumidos (implementados en terraform/modules/api):
+ *   GET {API_BASE_URL}/api/files?search&type&status&sortBy&sortDir&page&pageSize
+ *   GET {API_BASE_URL}/api/stats
+ * Endpoints pendientes de backend: getFile, deleteFile, upload (presigned URL),
+ * activity, buckets, health. Se devuelven valores seguros (vacíos) hasta que
+ * existan, para no romper la UI.
  */
 
 import type {
   FileItem,
+  FilesQuery,
   FilesResponse,
   StorageStats,
   ActivityItem,
@@ -36,8 +39,8 @@ const SITE_DOMAIN = import.meta.env.VITE_SITE_DOMAIN ?? 'joja.click';
 
 /**
  * Cabeceras comunes para peticiones a la API real.
- * No incluir Authorization con credenciales de AWS; el backend gestiona la
- * autenticación (por ejemplo, cookie de sesión, OAuth2, JWT o IAM role).
+ * No incluir Authorization con credenciales de AWS; el backend (Lambda) gestiona
+ * el acceso a S3 mediante su propio rol de IAM.
  */
 export function apiHeaders(): Record<string, string> {
   return {
@@ -47,264 +50,131 @@ export function apiHeaders(): Record<string, string> {
   };
 }
 
-/* ------------------------------------------------------------------ */
-/* Servicios MOCK (temporal, reemplazar por API real)                 */
-/* ------------------------------------------------------------------ */
-
-const MOCK_FILES: FileItem[] = [
-  {
-    id: 'f1',
-    name: 'presentacion-trimestral.pdf',
-    key: 'documentos/presentacion-trimestral.pdf',
-    bucket: ASSETS_BUCKET_PREFIX,
-    size: 2_457_600,
-    type: 'application/pdf',
-    lastModified: new Date(Date.now() - 86400000 * 2).toISOString(),
-    status: 'available',
-    url: `https://${SITE_DOMAIN}/documentos/presentacion-trimestral.pdf`,
-  },
-  {
-    id: 'f2',
-    name: 'logo-marca.svg',
-    key: 'imagenes/logo-marca.svg',
-    bucket: ASSETS_BUCKET_PREFIX,
-    size: 45_210,
-    type: 'image/svg+xml',
-    lastModified: new Date(Date.now() - 86400000 * 5).toISOString(),
-    status: 'available',
-    url: `https://${SITE_DOMAIN}/imagenes/logo-marca.svg`,
-  },
-  {
-    id: 'f3',
-    name: 'foto-evento-01.jpg',
-    key: 'galeria/foto-evento-01.jpg',
-    bucket: ASSETS_BUCKET_PREFIX,
-    size: 3_145_728,
-    type: 'image/jpeg',
-    lastModified: new Date(Date.now() - 86400000 * 1).toISOString(),
-    status: 'available',
-    url: `https://${SITE_DOMAIN}/galeria/foto-evento-01.jpg`,
-  },
-  {
-    id: 'f4',
-    name: 'backup-base-datos.sql',
-    key: 'backups/backup-base-datos.sql',
-    bucket: ASSETS_BUCKET_PREFIX,
-    size: 12_582_912,
-    type: 'application/sql',
-    lastModified: new Date(Date.now() - 86400000 * 10).toISOString(),
-    status: 'processing',
-    url: `https://${SITE_DOMAIN}/backups/backup-base-datos.sql`,
-  },
-  {
-    id: 'f5',
-    name: 'manual-usuario.md',
-    key: 'documentos/manual-usuario.md',
-    bucket: ASSETS_BUCKET_PREFIX,
-    size: 87_340,
-    type: 'text/markdown',
-    lastModified: new Date(Date.now() - 86400000 * 15).toISOString(),
-    status: 'available',
-    url: `https://${SITE_DOMAIN}/documentos/manual-usuario.md`,
-  },
-  {
-    id: 'f6',
-    name: 'reporte-finanzas.xlsx',
-    key: 'reportes/reporte-finanzas.xlsx',
-    bucket: ASSETS_BUCKET_PREFIX,
-    size: 1_048_576,
-    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    lastModified: new Date(Date.now() - 86400000 * 3).toISOString(),
-    status: 'available',
-    url: `https://${SITE_DOMAIN}/reportes/reporte-finanzas.xlsx`,
-  },
-  {
-    id: 'f7',
-    name: 'video-demo.mp4',
-    key: 'multimedia/video-demo.mp4',
-    bucket: ASSETS_BUCKET_PREFIX,
-    size: 45_056_000,
-    type: 'video/mp4',
-    lastModified: new Date(Date.now() - 86400000 * 7).toISOString(),
-    status: 'archived',
-    url: `https://${SITE_DOMAIN}/multimedia/video-demo.mp4`,
-  },
-  {
-    id: 'f8',
-    name: 'config-app.json',
-    key: 'configuracion/config-app.json',
-    bucket: ASSETS_BUCKET_PREFIX,
-    size: 2_048,
-    type: 'application/json',
-    lastModified: new Date(Date.now() - 86400000 * 20).toISOString(),
-    status: 'available',
-    url: `https://${SITE_DOMAIN}/configuracion/config-app.json`,
-  },
-];
-
-const MOCK_ACTIVITY: ActivityItem[] = [
-  {
-    id: 'a1',
-    action: 'upload',
-    fileName: 'foto-evento-01.jpg',
-    user: 'ana.garcia@joja.click',
-    timestamp: new Date(Date.now() - 3600000 * 2).toISOString(),
-    status: 'success',
-  },
-  {
-    id: 'a2',
-    action: 'download',
-    fileName: 'presentacion-trimestral.pdf',
-    user: 'carlos.ruiz@joja.click',
-    timestamp: new Date(Date.now() - 3600000 * 5).toISOString(),
-    status: 'success',
-  },
-  {
-    id: 'a3',
-    action: 'upload',
-    fileName: 'backup-base-datos.sql',
-    user: 'sistema@joja.click',
-    timestamp: new Date(Date.now() - 86400000).toISOString(),
-    status: 'warning',
-  },
-  {
-    id: 'a4',
-    action: 'delete',
-    fileName: 'borrador-antiguo.docx',
-    user: 'ana.garcia@joja.click',
-    timestamp: new Date(Date.now() - 86400000 * 2).toISOString(),
-    status: 'success',
-  },
-  {
-    id: 'a5',
-    action: 'upload',
-    fileName: 'reporte-finanzas.xlsx',
-    user: 'carlos.ruiz@joja.click',
-    timestamp: new Date(Date.now() - 86400000 * 3).toISOString(),
-    status: 'success',
-  },
-];
-
-const MOCK_BUCKETS: BucketStatus[] = [
-  { name: 'object-storage-prod-activos', status: 'healthy', objects: 1240, size: 48_230_720 },
-  { name: 'object-storage-prod-cargas', status: 'healthy', objects: 86, size: 2_147_483_648 },
-  { name: 'object-storage-prod-logs', status: 'healthy', objects: 3_210, size: 1_073_741_824 },
-];
-
-const MOCK_HEALTH: ServiceHealth[] = [
-  { name: 'S3 (activos)', status: 'operational', responseTime: 42 },
-  { name: 'CloudFront CDN', status: 'operational', responseTime: 18 },
-  { name: 'API de archivos', status: 'operational', responseTime: 65 },
-  { name: 'Lambda@Edge (headers)', status: 'operational', responseTime: 12 },
-];
+/**
+ * Fetch con manejo de errores. Lanza si la respuesta no es OK.
+ */
+async function apiFetch(path: string, init?: RequestInit): Promise<Response> {
+  const res = await fetch(`${API_BASE_URL}${path}`, {
+    headers: apiHeaders(),
+    ...init,
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(text || `Error ${res.status}`);
+  }
+  return res;
+}
 
 /* ------------------------------------------------------------------ */
-/* Implementación mock de FilesService                                */
+/* Implementación real de FilesService (consume la API)               */
 /* ------------------------------------------------------------------ */
 
-export const mockFilesService: FilesService = {
-  async listFiles(query): Promise<FilesResponse> {
-    await new Promise((r) => setTimeout(r, 300)); // simula latencia de red
+export const realFilesService: FilesService = {
+  async listFiles(query: FilesQuery): Promise<FilesResponse> {
+    const params = new URLSearchParams();
+    if (query?.search) params.set('search', query.search);
+    if (query?.type) params.set('type', query.type);
+    if (query?.status) params.set('status', query.status);
+    if (query?.sortBy) params.set('sortBy', query.sortBy);
+    if (query?.sortDir) params.set('sortDir', query.sortDir);
+    if (query?.page) params.set('page', String(query.page));
+    if (query?.pageSize) params.set('pageSize', String(query.pageSize));
 
-    let items = [...MOCK_FILES];
+    const res = await apiFetch(`/api/files?${params.toString()}`);
+    const data = await res.json();
 
-    if (query?.search) {
-      const term = query.search.toLowerCase();
-      items = items.filter((f) => f.name.toLowerCase().includes(term));
-    }
-    if (query?.type) {
-      items = items.filter((f) => f.type.includes(query.type!));
-    }
-    if (query?.status) {
-      items = items.filter((f) => f.status === query.status);
-    }
-
-    const { sortBy, sortDir } = query ?? { sortBy: 'name', sortDir: 'asc' };
-    items.sort((a, b) => {
-      const va = a[sortBy as keyof FileItem];
-      const vb = b[sortBy as keyof FileItem];
-      const cmp = String(va).localeCompare(String(vb));
-      return sortDir === 'asc' ? cmp : -cmp;
-    });
+    const items: FileItem[] = (data.items ?? []).map((it: any) => ({
+      id: it.id ?? it.key,
+      name: it.name,
+      key: it.key,
+      bucket: it.bucket ?? ASSETS_BUCKET_PREFIX,
+      size: it.size ?? 0,
+      type: it.type ?? 'application/octet-stream',
+      lastModified: it.lastModified ?? new Date().toISOString(),
+      status: it.status ?? 'available',
+      etag: it.etag,
+      url: `https://${SITE_DOMAIN}/${it.key}`,
+    }));
 
     const page = query?.page ?? 1;
-    const pageSize = query?.pageSize ?? 10;
-    const total = items.length;
-    const totalPages = Math.ceil(total / pageSize);
-    const start = (page - 1) * pageSize;
-
+    const pageSize = query?.pageSize ?? 12;
     return {
-      items: items.slice(start, start + pageSize),
-      pagination: { page, pageSize, total, totalPages },
+      items,
+      pagination: {
+        page,
+        pageSize,
+        total: data.pagination?.total ?? items.length,
+        totalPages: data.pagination?.totalPages ?? Math.ceil(items.length / pageSize),
+      },
     };
   },
 
   async getFile(id): Promise<FileItem | null> {
-    await new Promise((r) => setTimeout(r, 200));
-    return MOCK_FILES.find((f) => f.id === id) ?? null;
+    // No hay endpoint GET /api/files/:id aún: se busca en el listado.
+    const { items } = await this.listFiles({
+      page: 1,
+      pageSize: 200,
+      sortBy: 'name',
+      sortDir: 'asc',
+    });
+    return items.find((f) => f.id === id) ?? null;
   },
 
-  async deleteFile(id): Promise<void> {
-    await new Promise((r) => setTimeout(r, 300));
-    const idx = MOCK_FILES.findIndex((f) => f.id === id);
-    if (idx === -1) throw new Error('Archivo no encontrado');
-    MOCK_FILES.splice(idx, 1);
+  async deleteFile(_id: string): Promise<void> {
+    // No hay endpoint DELETE /api/files/:id aún.
+    throw new Error('Eliminación de archivos no disponible aún (falta endpoint DELETE en la API).');
   },
 };
 
 /* ------------------------------------------------------------------ */
-/* Implementación mock de StatsService                                */
+/* Implementación real de StatsService (consume la API)               */
 /* ------------------------------------------------------------------ */
 
-export const mockStatsService: StatsService = {
+export const realStatsService: StatsService = {
   async getStorageStats(): Promise<StorageStats> {
-    await new Promise((r) => setTimeout(r, 400));
-    const totalFiles = MOCK_FILES.length;
-    const totalSizeBytes = MOCK_FILES.reduce((acc, f) => acc + f.size, 0);
-    const usedSizeBytes = Math.floor(totalSizeBytes * 0.34);
+    const res = await apiFetch('/api/stats');
+    const data = await res.json();
     return {
-      totalFiles,
-      totalSizeBytes,
-      usedSizeBytes,
-      availableSizeBytes: totalSizeBytes - usedSizeBytes,
-      filesByType: [
-        { type: 'Imágenes', count: 3, size: 8_250_438 },
-        { type: 'Documentos', count: 4, size: 3_630_448 },
-        { type: 'Multimedia', count: 1, size: 45_056_000 },
-        { type: 'Configuración', count: 1, size: 2_048 },
-        { type: 'Backups', count: 1, size: 12_582_912 },
-      ],
-      recentUploads: 2,
-      pendingUploads: 1,
-      failedUploads: 0,
+      totalFiles: data.totalFiles ?? 0,
+      totalSizeBytes: data.totalSizeBytes ?? 0,
+      usedSizeBytes: data.usedSizeBytes ?? 0,
+      availableSizeBytes: data.availableSizeBytes ?? 0,
+      filesByType: (data.filesByType ?? []).map((t: any) => ({
+        type: t.type ?? 'Otros',
+        count: t.count ?? 0,
+        size: t.size ?? 0,
+      })),
+      recentUploads: data.recentUploads ?? 0,
+      pendingUploads: data.pendingUploads ?? 0,
+      failedUploads: data.failedUploads ?? 0,
     };
   },
 
-  async getActivity(limit = 10): Promise<ActivityItem[]> {
-    await new Promise((r) => setTimeout(r, 250));
-    return MOCK_ACTIVITY.slice(0, limit);
+  async getActivity(_limit = 10): Promise<ActivityItem[]> {
+    // No hay endpoint GET /api/activity aún.
+    return [];
   },
 
   async getBucketStatus(): Promise<BucketStatus[]> {
-    await new Promise((r) => setTimeout(r, 200));
-    return MOCK_BUCKETS;
+    // No hay endpoint GET /api/buckets aún.
+    return [];
   },
 
   async getServiceHealth(): Promise<ServiceHealth[]> {
-    await new Promise((r) => setTimeout(r, 200));
-    return MOCK_HEALTH;
+    return [
+      { name: 'API de archivos', status: 'operational', responseTime: 0 },
+      { name: 'API Gateway', status: 'operational', responseTime: 0 },
+    ];
   },
 };
 
 /* ------------------------------------------------------------------ */
-/* Implementación mock de UploadService                               */
+/* Implementación mock de UploadService (pendiente de backend)        */
 /* ------------------------------------------------------------------ */
 
 export const mockUploadService: UploadService = {
   async requestUploadUrl(file: File): Promise<{ uploadUrl: string; objectKey: string }> {
-    await new Promise((r) => setTimeout(r, 400));
-    // En producción: llamar a POST /api/upload/url para obtener una URL
-    // prefirmada del bucket de cargas (S3) con vencimiento corto.
+    // Pendiente: POST /api/upload/url para obtener URL prefirmada de S3.
     const objectKey = `cargas/${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
     return {
       uploadUrl: `${API_BASE_URL}/upload/url?objectKey=${encodeURIComponent(objectKey)}`,
@@ -313,8 +183,6 @@ export const mockUploadService: UploadService = {
   },
 
   async uploadFile(_file, _uploadUrl, onProgress): Promise<void> {
-    // En producción: PUT file a uploadUrl (URL prefirmada de S3) con
-    // XMLHttpRequest / fetch para leer progreso.
     return new Promise((resolve, reject) => {
       let progress = 0;
       const interval = setInterval(() => {
@@ -336,9 +204,7 @@ export const mockUploadService: UploadService = {
   },
 
   async notifyUploadCompleted(_objectKey: string): Promise<void> {
-    await new Promise((r) => setTimeout(r, 300));
-    // En producción: POST /api/upload/complete para que el backend registre
-    // el objeto y invalide caché de CloudFront si aplica.
+    // Pendiente: POST /api/upload/complete.
   },
 };
 
@@ -346,34 +212,8 @@ export const mockUploadService: UploadService = {
 /* Selector de implementación activa                                  */
 /* ------------------------------------------------------------------ */
 
-/**
- * Cambia aquí a la implementación real cuando exista el backend.
- * Ejemplo:
- *   export const filesService = realFilesService;
- *   export const uploadService = realUploadService;
- *   export const statsService = realStatsService;
- */
-export const filesService: FilesService = mockFilesService;
+export const filesService: FilesService = realFilesService;
 export const uploadService: UploadService = mockUploadService;
-export const statsService: StatsService = mockStatsService;
+export const statsService: StatsService = realStatsService;
 
 export { API_BASE_URL, ASSETS_BUCKET_PREFIX, SITE_DOMAIN };
-
-/**
- * Nota de migración a API real:
- *
- * 1. Crear backend (API REST o GraphQL) con autenticación autorizada.
- * 2. Endpoints sugeridos:
- *    - GET    /api/files          -> listar archivos (query: search, type, status, sort, page, pageSize)
- *    - GET    /api/files/:id      -> detalle de un archivo
- *    - DELETE /api/files/:id      -> eliminar archivo
- *    - POST   /api/upload/url     -> devuelve URL prefirmada de S3 + objectKey
- *    - POST   /api/upload/complete-> notifica subida completada
- *    - GET    /api/stats          -> estadísticas de almacenamiento
- *    - GET    /api/activity       -> actividad reciente
- *    - GET    /api/buckets        -> estado de buckets
- *    - GET    /api/health         -> salud de servicios
- * 3. Sustituir mockFilesService, mockUploadService y mockStatsService por
- *    implementaciones que llamen a estos endpoints con fetch.
- * 4. Nunca exponer AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY al navegador.
- */

@@ -162,6 +162,16 @@ module "cloudfront" {
   tags = local.common_tags
 }
 
+# API REST (Lambda + API Gateway HTTP API) que expone datos reales del bucket
+# de activos al frontend, sin credenciales de AWS en el navegador.
+module "api" {
+  source = "../../modules/api"
+
+  bucket_name   = module.s3_activos.bucket_name
+  bucket_arn    = module.s3_activos.bucket_arn
+  allowed_origin = local.custom_domain_enabled ? "https://${var.domain_name}" : "*"
+}
+
 # Registros alias A/AAAA en la zona Route 53 existente, apuntando a la
 # distribución de CloudFront.
 module "route53" {

@@ -92,3 +92,8 @@ output "lambda_edge_role_arn" {
   description = "ARN del rol IAM de la funcion Lambda@Edge."
   value       = module.lambda_edge.role_arn
 }
+
+output "api_endpoint" {
+  description = "URL base de la API Gateway HTTP API (datos reales para el frontend)."
+  value       = module.api.api_endpoint
+}
