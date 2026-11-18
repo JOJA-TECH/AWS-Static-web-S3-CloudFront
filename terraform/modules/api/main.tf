@@ -103,9 +103,21 @@ resource "aws_apigatewayv2_route" "files" {
   target    = "integrations/${aws_apigatewayv2_integration.api.id}"
 }
 
+resource "aws_apigatewayv2_route" "files_options" {
+  api_id    = aws_apigatewayv2_api.api.id
+  route_key = "OPTIONS /api/files"
+  target    = "integrations/${aws_apigatewayv2_integration.api.id}"
+}
+
 resource "aws_apigatewayv2_route" "stats" {
   api_id    = aws_apigatewayv2_api.api.id
   route_key = "GET /api/stats"
+  target    = "integrations/${aws_apigatewayv2_integration.api.id}"
+}
+
+resource "aws_apigatewayv2_route" "stats_options" {
+  api_id    = aws_apigatewayv2_api.api.id
+  route_key = "OPTIONS /api/stats"
   target    = "integrations/${aws_apigatewayv2_integration.api.id}"
 }
 
@@ -115,9 +127,21 @@ resource "aws_apigatewayv2_route" "upload_url" {
   target    = "integrations/${aws_apigatewayv2_integration.api.id}"
 }
 
+resource "aws_apigatewayv2_route" "upload_url_options" {
+  api_id    = aws_apigatewayv2_api.api.id
+  route_key = "OPTIONS /api/upload/url"
+  target    = "integrations/${aws_apigatewayv2_integration.api.id}"
+}
+
 resource "aws_apigatewayv2_route" "upload_complete" {
   api_id    = aws_apigatewayv2_api.api.id
   route_key = "POST /api/upload/complete"
+  target    = "integrations/${aws_apigatewayv2_integration.api.id}"
+}
+
+resource "aws_apigatewayv2_route" "upload_complete_options" {
+  api_id    = aws_apigatewayv2_api.api.id
+  route_key = "OPTIONS /api/upload/complete"
   target    = "integrations/${aws_apigatewayv2_integration.api.id}"
 }
 
