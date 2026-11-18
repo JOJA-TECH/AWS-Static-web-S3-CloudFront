@@ -44,7 +44,7 @@ jobs:
           terraform init -backend-config="bucket=$TF_STATE_BUCKET" -backend-config="dynamodb_table=$TF_STATE_LOCK_TABLE"
           BUCKET=$(terraform output -raw activos_bucket_name)
           DISTRIBUTION=$(terraform output -raw cloudfront_distribution_id)
-          API_ENDPOINT=$(terraform output -raw api_endpoint)
+          API_ENDPOINT="$(terraform output -raw api_endpoint)/prod"
           echo "bucket=$BUCKET" >> $GITHUB_OUTPUT
           echo "distribution=$DISTRIBUTION" >> $GITHUB_OUTPUT
           echo "api_endpoint=$API_ENDPOINT" >> $GITHUB_OUTPUT
