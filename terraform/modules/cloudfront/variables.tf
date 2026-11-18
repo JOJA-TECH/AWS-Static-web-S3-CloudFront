@@ -53,6 +53,18 @@ variable "lambda_edge_qualified_arn" {
   default     = null
 }
 
+variable "logging_bucket_domain_name" {
+  description = "Nombre de dominio del bucket S3 donde CloudFront almacena los registros de acceso. Si es null, no se habilitan logs de acceso."
+  type        = string
+  default     = null
+}
+
+variable "logging_bucket_arn" {
+  description = "ARN del bucket S3 donde CloudFront almacena los registros de acceso. Usado para documentacion y dependencias."
+  type        = string
+  default     = null
+}
+
 variable "tags" {
   description = "Etiquetas adicionales para los recursos de CloudFront."
   type        = map(string)

@@ -37,6 +37,10 @@ locals {
   ) : null
 }
 
+# Identidad de la cuenta AWS actual: usada para la política de bucket de logs
+# de CloudFront (condicionar SourceAccount en la política de bucket).
+data "aws_caller_identity" "current" {}
+
 # Hosted Zone pública existente: se consulta solo cuando no se crea una nueva,
 # no se indica route53_zone_id y se proporciona route53_zone_name.
 data "aws_route53_zone" "selected" {
@@ -207,7 +211,36 @@ module "cloudfront" {
   # encabezados de seguridad en origin-response. Null si no se desea asociar.
   lambda_edge_qualified_arn = module.lambda_edge.qualified_arn
 
+  # Registros de acceso de CloudFront en el bucket de logs.
+  logging_bucket_domain_name = module.s3_logs.bucket_regional_domain_name
+  logging_bucket_arn         = module.s3_logs.bucket_arn
+
   tags = local.common_tags
+}
+
+# Politica del bucket de logs: permite a CloudFront escribir objetos de acceso.
+# Depende de ambos modulos para resolver la referencia circular (CloudFront
+# necesita el bucket de logs; el bucket de logs necesita el ARN de CloudFront).
+resource "aws_s3_bucket_policy" "cloudfront_logs" {
+  bucket = module.s3_logs.bucket_name
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AWSCloudFrontAccessLog"
+      Effect    = "Allow"
+      Principal = { Service = "cloudfront.amazonaws.com" }
+      Action    = "s3:PutObject"
+      Resource  = "${module.s3_logs.bucket_arn}/*"
+      Condition = {
+        StringEquals = {
+          "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+          "AWS:SourceArn"     = module.cloudfront.distribution_arn
+        }
+      }
+    }]
+  })
+
+  depends_on = [module.cloudfront, module.s3_logs]
 }
 
 # API REST (Lambda + API Gateway HTTP API) que expone datos reales del bucket

@@ -136,6 +136,16 @@ resource "aws_cloudfront_distribution" "this" {
     }
   }
 
+  # Registros de acceso de CloudFront en el bucket de logs (si se indica).
+  dynamic "logging_config" {
+    for_each = var.logging_bucket_domain_name != null ? [1] : []
+    content {
+      bucket        = var.logging_bucket_domain_name
+      include_cookies = false
+      prefix        = "${var.project_name}/cloudfront-logs/"
+    }
+  }
+
   viewer_certificate {
     cloudfront_default_certificate = var.acm_certificate_arn == null
     acm_certificate_arn            = var.acm_certificate_arn
