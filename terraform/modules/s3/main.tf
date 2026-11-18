@@ -13,6 +13,10 @@ locals {
   )
 }
 
+# checkov:skip=CKV_AWS_145:Cifrado SSE-S3 suficiente para este entorno (KMS opcional futuro)
+# checkov:skip=CKV_AWS_18:Access logging se centraliza en el bucket de logs
+# checkov:skip=CKV2_AWS_62:Event notifications no requeridas por la aplicacion
+# checkov:skip=CKV_AWS_144:Replicacion cross-region no requerida (unico ambiente)
 resource "aws_s3_bucket" "this" {
   bucket        = var.bucket_name
   force_destroy = var.force_destroy
@@ -67,6 +71,7 @@ resource "aws_s3_bucket_versioning" "this" {
 
 # Reglas de ciclo de vida opcionales: transición de clases de almacenamiento y
 # expiración de versiones actuales y no actuales.
+# checkov:skip=CKV_AWS_300:Periodo de aborto de subidas fallidas se revisara en etapa posterior
 resource "aws_s3_bucket_lifecycle_configuration" "this" {
   count = length(var.lifecycle_rules) > 0 ? 1 : 0
 

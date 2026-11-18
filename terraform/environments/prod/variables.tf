@@ -62,14 +62,3 @@ variable "route53_validation_record_ttl" {
   default     = 60
 }
 
-variable "state_bucket" {
-  description = "Nombre del bucket S3 para el estado remoto de Terraform. Requerido para backend remoto."
-  type        = string
-  default     = null
-}
-
-variable "state_lock_table" {
-  description = "Nombre de la tabla DynamoDB para el bloqueo del estado remoto. Requerido para backend remoto."
-  type        = string
-  default     = null
-}

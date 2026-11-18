@@ -47,6 +47,12 @@ data "archive_file" "lambda_zip" {
   output_path = "${path.module}/api_lambda.zip"
 }
 
+# checkov:skip=CKV_AWS_50:Funcion simple sin X-Ray tracing (proyecto academico)
+# checkov:skip=CKV_AWS_116:Funcion simple sin Dead Letter Queue (proyecto academico)
+# checkov:skip=CKV_AWS_117:Funcion simple sin VPC (proyecto academico)
+# checkov:skip=CKV_AWS_272:Funcion simple sin validacion de code-signing (proyecto academico)
+# checkov:skip=CKV_AWS_115:Funcion simple sin limite de concurrencia (proyecto academico)
+# checkov:skip=CKV_AWS_173:Variables de entorno sin datos sensibles (proyecto academico)
 resource "aws_lambda_function" "api" {
   function_name = "api-object-storage-${var.bucket_name}"
   role          = aws_iam_role.lambda.arn
@@ -98,53 +104,62 @@ resource "aws_apigatewayv2_integration" "api" {
 }
 
 resource "aws_apigatewayv2_route" "files" {
-  api_id    = aws_apigatewayv2_api.api.id
-  route_key = "GET /api/files"
-  target    = "integrations/${aws_apigatewayv2_integration.api.id}"
+  api_id             = aws_apigatewayv2_api.api.id
+  route_key          = "GET /api/files"
+  target             = "integrations/${aws_apigatewayv2_integration.api.id}"
+  authorization_type = "NONE"
 }
 
 resource "aws_apigatewayv2_route" "files_options" {
-  api_id    = aws_apigatewayv2_api.api.id
-  route_key = "OPTIONS /api/files"
-  target    = "integrations/${aws_apigatewayv2_integration.api.id}"
+  api_id             = aws_apigatewayv2_api.api.id
+  route_key          = "OPTIONS /api/files"
+  target             = "integrations/${aws_apigatewayv2_integration.api.id}"
+  authorization_type = "NONE"
 }
 
 resource "aws_apigatewayv2_route" "stats" {
-  api_id    = aws_apigatewayv2_api.api.id
-  route_key = "GET /api/stats"
-  target    = "integrations/${aws_apigatewayv2_integration.api.id}"
+  api_id             = aws_apigatewayv2_api.api.id
+  route_key          = "GET /api/stats"
+  target             = "integrations/${aws_apigatewayv2_integration.api.id}"
+  authorization_type = "NONE"
 }
 
 resource "aws_apigatewayv2_route" "stats_options" {
-  api_id    = aws_apigatewayv2_api.api.id
-  route_key = "OPTIONS /api/stats"
-  target    = "integrations/${aws_apigatewayv2_integration.api.id}"
+  api_id             = aws_apigatewayv2_api.api.id
+  route_key          = "OPTIONS /api/stats"
+  target             = "integrations/${aws_apigatewayv2_integration.api.id}"
+  authorization_type = "NONE"
 }
 
 resource "aws_apigatewayv2_route" "upload_url" {
-  api_id    = aws_apigatewayv2_api.api.id
-  route_key = "POST /api/upload/url"
-  target    = "integrations/${aws_apigatewayv2_integration.api.id}"
+  api_id             = aws_apigatewayv2_api.api.id
+  route_key          = "POST /api/upload/url"
+  target             = "integrations/${aws_apigatewayv2_integration.api.id}"
+  authorization_type = "NONE"
 }
 
 resource "aws_apigatewayv2_route" "upload_url_options" {
-  api_id    = aws_apigatewayv2_api.api.id
-  route_key = "OPTIONS /api/upload/url"
-  target    = "integrations/${aws_apigatewayv2_integration.api.id}"
+  api_id             = aws_apigatewayv2_api.api.id
+  route_key          = "OPTIONS /api/upload/url"
+  target             = "integrations/${aws_apigatewayv2_integration.api.id}"
+  authorization_type = "NONE"
 }
 
 resource "aws_apigatewayv2_route" "upload_complete" {
-  api_id    = aws_apigatewayv2_api.api.id
-  route_key = "POST /api/upload/complete"
-  target    = "integrations/${aws_apigatewayv2_integration.api.id}"
+  api_id             = aws_apigatewayv2_api.api.id
+  route_key          = "POST /api/upload/complete"
+  target             = "integrations/${aws_apigatewayv2_integration.api.id}"
+  authorization_type = "NONE"
 }
 
 resource "aws_apigatewayv2_route" "upload_complete_options" {
-  api_id    = aws_apigatewayv2_api.api.id
-  route_key = "OPTIONS /api/upload/complete"
-  target    = "integrations/${aws_apigatewayv2_integration.api.id}"
+  api_id             = aws_apigatewayv2_api.api.id
+  route_key          = "OPTIONS /api/upload/complete"
+  target             = "integrations/${aws_apigatewayv2_integration.api.id}"
+  authorization_type = "NONE"
 }
 
+# checkov:skip=CKV_AWS_76:Access logging de API Gateway no requerido (proyecto academico)
 resource "aws_apigatewayv2_stage" "api" {
   api_id      = aws_apigatewayv2_api.api.id
   name        = "prod"

@@ -49,6 +49,8 @@ data "aws_route53_zone" "selected" {
 # Hosted Zone pública nueva para el dominio (padre). Tras crearla hay que
 # copiar sus name servers en el registrador del dominio para que ACM pueda
 # validar el certificado.
+# checkov:skip=CKV2_AWS_38:DNSSEC de Route53 se habilitara en etapa posterior
+# checkov:skip=CKV2_AWS_39:Query logging de Route53 se habilitara en etapa posterior
 resource "aws_route53_zone" "this" {
   count = local.custom_domain_enabled && var.create_route53_zone ? 1 : 0
 
@@ -123,6 +125,19 @@ module "s3_logs" {
   purpose     = "logs"
 }
 
+# Web ACL global para CloudFront: los grupos administrados solo cuentan
+# coincidencias mientras se observan posibles falsos positivos.
+module "waf" {
+  source = "../../modules/waf"
+
+  providers = {
+    aws.us_east_1 = aws.us_east_1
+  }
+
+  project_name = var.project_name
+  tags         = local.common_tags
+}
+
 # Certificado ACM en us-east-1 con validación DNS en la zona indicada.
 module "acm" {
   count  = local.custom_domain_enabled ? 1 : 0
@@ -171,6 +186,7 @@ module "cloudfront" {
   # certificado por defecto de CloudFront).
   aliases             = local.domain_aliases
   acm_certificate_arn = local.custom_domain_enabled ? module.acm[0].certificate_arn : null
+  web_acl_id          = module.waf.web_acl_arn
 
   # ARN cualificado de la version publicada de Lambda@Edge para agregar
   # encabezados de seguridad en origin-response. Null si no se desea asociar.

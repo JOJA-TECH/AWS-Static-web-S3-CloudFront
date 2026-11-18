@@ -1,8 +1,9 @@
 # Infraestructura como código (Terraform)
 
 Infraestructura en **AWS** gestionada con Terraform para la plataforma de
-almacenamiento de objetos, con distribución global de contenido estático
-mediante CloudFront en etapas posteriores.
+almacenamiento de objetos y distribución global de contenido estático mediante
+CloudFront, con protección de AWS WAF y encabezados de seguridad vía
+Lambda@Edge.
 
 ## Estructura del repositorio
 
@@ -19,20 +20,17 @@ terraform/
 │       ├── outputs.tf            # Valores expuestos al finalizar el despliegue
 │       └── terraform.tfvars.example   # Ejemplo de valores (sin secretos)
 └── modules/
-    ├── acm/                  # Certificados ACM (us-east-1) para CloudFront
-    ├── cloudfront/           # Distribución CloudFront + OAC + políticas de caché
-    ├── lambda-edge/          # Lambda@Edge: encabezados de seguridad en origin-response
-    ├── route53/              # Registros DNS en Route 53
-    └── s3/                   # Módulo reutilizable de buckets S3
-        ├── main.tf
-        ├── variables.tf
-        └── outputs.tf
+    ├── acm/                      # Certificados TLS y validación DNS
+    ├── cloudfront/               # Distribución, OAC, WAF y Lambda@Edge
+    ├── lambda-edge/              # Encabezados de seguridad en origin-response
+    ├── route53/                  # Registros DNS para CloudFront
+    ├── s3/                       # Módulo reutilizable de buckets S3
+    └── waf/                      # Web ACL para CloudFront en modo COUNT
 ```
 
 La organización separa los **ambientes de ejecución** (`environments/`) de los
-**módulos reutilizables** (`modules/`), de modo que se puedan agregar después
-módulos independientes para CloudFront, ACM, Route 53, WAF, Lambda@Edge y
-políticas de ciclo de vida sin reorganizar el proyecto.
+**módulos reutilizables** (`modules/`), que componen los recursos de AWS de
+forma independiente.
 
 ## Requisitos
 
@@ -76,7 +74,7 @@ terraform init        # Descarga proveedores y genera .terraform.lock.hcl
 terraform validate    # Verifica la sintaxis y coherencia de la configuración
 terraform plan        # Muestra el plan de cambios antes de aplicar
 terraform apply       # Aplica los cambios (revisar el plan antes de confirmar)
-terraform output      # Nombres y ARN de los buckets creados
+terraform output      # Nombres y ARN de los recursos creados
 ```
 
 Verificación de formato y validación completa:
@@ -116,7 +114,7 @@ SSE-S3 y versionado habilitados:
 
 | Módulo | Propósito | Nombre por defecto |
 |---|---|---|
-| `s3_activos` | Contenido estático de la aplicación (futuro origen de CloudFront) | `<prefijo>-prod-activos` |
+| `s3_activos` | Contenido estático de la aplicación (origen de CloudFront) | `<prefijo>-prod-activos` |
 | `s3_cargas` | Archivos cargados por la aplicación o procesos autorizados | `<prefijo>-prod-cargas` |
 | `s3_logs` | Registros de acceso y operación de los servicios | `<prefijo>-prod-logs` |
 
@@ -149,17 +147,28 @@ El módulo crea el bucket con propiedad `BucketOwnerEnforced`, bloqueo completo
 de acceso público y cifrado del lado del servidor, y expone como outputs el
 nombre, el ARN y el dominio regional del bucket (útil para CloudFront).
 
-## `modules/lambda-edge`
+### `modules/waf`
+
+Crea un Web ACL con scope `CLOUDFRONT` en `us-east-1`, con los grupos
+administrados `AWSManagedRulesCommonRuleSet`,
+`AWSManagedRulesKnownBadInputsRuleSet` y
+`AWSManagedRulesAmazonIpReputationList`. Los tres usan `override_action` en
+modo `COUNT`; el Web ACL permite por defecto y habilita métricas de CloudWatch
+y solicitudes muestreadas para observar coincidencias.
+
+El ARN se expone como `waf_web_acl_arn` y se asocia a la distribución
+CloudFront. En modo `COUNT`, el WAF registra las coincidencias sin bloquear
+solicitudes. El logging del WAF se configurará posteriormente.
+
+### `modules/lambda-edge`
 
 Lambda@Edge agrega encabezados de seguridad HTTP a las respuestas de CloudFront
 en el evento `origin-response`. Se implementa como una función de Node.js
 (CommonJS) sin dependencias externas, empaquetada con `archive_file` y
 publicada como una versión inmutable (`publish = true`).
 
-### ¿Qué hace
-
 Intercepta la respuesta del origen antes de que CloudFront la entregue al
-visita­dor y agrega o reemplaza estos encabezados:
+visitante y agrega o reemplaza estos encabezados:
 
 | Encabezado | Valor |
 |---|---|
@@ -168,113 +177,18 @@ visita­dor y agrega o reemplaza estos encabezados:
 | `X-Frame-Options` | `DENY` |
 | `Content-Security-Policy` | `default-src 'self'; object-src 'none'; base-uri 'self'` |
 
-Si un encabezado ya existía, se reemplaza por un único valor para evitar
-duplicados. Se conserva el status code, el `statusDescription` y el `body`
-originales.
-
-### ¿Por qué `origin-response`
-
-`origin-response` se ejecuta después de que CloudFront recibe la respuesta del
-origen (S3) y antes de enviarla al cliente. Es el momento adecuado para
-modificar encabezados de respuesta basados en el contenido real entregado por
-el origen, y funciona tanto para respuestas en caché como para las que
-provienen directamente del origen.
-
-### ¿Por qué `us-east-1`
-
-Las funciones Lambda@Edge deben crearse obligatoriamente en la región
-`us-east-1`, independientemente de la región del resto de la infraestructura.
-El módulo declara el alias de provider mediante
-`configuration_aliases = [aws.us_east_1]` y el ambiente `prod` lo invoca con
-`providers = { aws.us_east_1 = aws.us_east_1 }`.
-
-### ¿Por qué una versión publicada
-
-CloudFront no puede asociar `$LATEST`. Terraform publica una versión
-inmutable (`publish = true`) y la distribución usa el `qualified_arn`
-(ARN cualificado con número de versión), de modo que la asociación apunta a
-una versión estable y reproducible. El cambio de código se detecta mediante
-`source_code_hash`.
-
-### Encabezados CSP y contenido de prueba
-
-La política `Content-Security-Policy` propuesta es restrictiva
-(`default-src 'self'`). El sitio de prueba en `test-content/` solo referencia
-recursos propios bajo `/assets` (`style.css`, `logo.svg`) sin orígenes
-externos, scripts ni estilos en línea, por lo que la CSP no bloquea ningún
-recurso legítimo del sitio de prueba. Si se agregan orígenes externos o
-recursos inline, la CSP debe ajustarse.
-
-### Pruebas unitarias
-
-Las pruebas están en `terraform/modules/lambda-edge/tests/index.test.js` y no
-requieren dependencias externas (usan `node:assert` / `node:test`):
-
-```bash
-node --test terraform/modules/lambda-edge/tests/index.test.js
-```
-
-Verifican: presencia de los cuatro encabezados, capitalización de los nombres,
-valores correctos, conservación de status code y body, ausencia de
-duplicados, y comportamiento tanto sin encabezados previos como con
-encabezados existentes.
-
-### Validación de Terraform
-
-```bash
-cd terraform/environments/prod
-terraform init -backend=false
-terraform validate
-```
-
-Formato:
-
-```bash
-cd terraform
-terraform fmt -recursive
-terraform fmt -check -recursive
-```
-
-### Permisos IAM
-
-El módulo crea un rol exclusivo (`aws_iam_role`) cuya política de confianza
-permite ser asumido por `lambda.amazonaws.com` y `edgelambda.amazonaws.com`.
-Adjunta la política administrada `AWSLambdaBasicExecutionRole` (mínimo
-privilegio para escribir logs en CloudWatch Logs). No otorga permisos de S3,
-CloudFront, WAF ni otros servicios, ya que la función solo modifica la
-respuesta HTTP. No se incluyen credenciales en el código ni en variables.
-
-### Replicación de Lambda@Edge
-
-Tras publicar una versión y asociarla a CloudFront, la replicación de la
-función a los edge locations puede tardar desde unos segundos hasta un par de
-minutos. Durante ese periodo, algunas ubicaciones pueden seguir sirviendo la
-respuesta sin los nuevos encabezados.
-
-### Verificación con curl
-
-Una vez desplegado, se puede verificar la presencia de los encabezados con:
-
-```bash
-curl -sS -D - -o /dev/null https://DOMINIO_CLOUDFRONT/index.html
-```
-
-Se espera observar en las cabeceras de respuesta:
-
-```
-Strict-Transport-Security
-X-Content-Type-Options
-X-Frame-Options
-Content-Security-Policy
-```
-
-Nota: la implementación solicitada es Lambda@Edge. Existe la alternativa de
-una CloudFront Response Headers Policy, pero queda fuera de alcance de esta
-tarea por requerimiento académico.
+CloudFront no puede asociar `$LATEST`, por lo que Terraform publica una
+versión inmutable (`publish = true`) y la distribución usa el `qualified_arn`
+(ARN cualificado con número de versión).
 
 ## Próximos pasos
 
-La estructura está preparada para incorporar módulos independientes:
-
-- Protección con AWS WAF.
-- Pipeline de CI/CD con GitHub Actions.
+- Ejecutar `terraform fmt`, `validate` y revisar el plan antes de aplicar.
+- Aplicar en un ambiente de prueba o en una ventana controlada; verificar el
+  dominio, las métricas de WAF y las solicitudes muestreadas.
+- Habilitar logging y alertas para WAF.
+- Cambiar progresivamente las reglas administradas de COUNT a bloqueo y
+  comprobar que la asociación con CloudFront persiste después de la
+  propagación.
+- Configurar GitHub Actions con OIDC y estado remoto en S3 antes de usarlo
+  como proceso de producción.
