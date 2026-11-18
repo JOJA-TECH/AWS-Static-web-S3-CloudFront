@@ -46,7 +46,12 @@ data "archive_file" "lambda_zip" {
   type        = "zip"
   output_path = "${path.module}/lambda-edge-function.zip"
   source {
-    content  = file("${path.module}/src/index.js")
+    # Lambda@Edge no admite variables de entorno: se inyectan al empaquetar.
+    content  = <<-EOT
+      ${file("${path.module}/src/index.js")}
+      process.env.API_DOMAIN = '${var.api_domain}';
+      process.env.UPLOAD_DOMAIN = '${var.upload_domain}';
+    EOT
     filename = "index.js"
   }
 }
@@ -66,13 +71,6 @@ resource "aws_lambda_function" "edge" {
   publish          = true
   description      = "Lambda@Edge: agrega encabezados de seguridad HTTP en respuestas origin-response de CloudFront."
   timeout          = 30
-
-  environment {
-    variables = {
-      API_DOMAIN    = var.api_domain
-      UPLOAD_DOMAIN = var.upload_domain
-    }
-  }
 
   tags = var.tags
 
