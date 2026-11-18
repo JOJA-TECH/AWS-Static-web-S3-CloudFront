@@ -15,9 +15,10 @@
  *
  * Nota sobre la CSP: el sitio de prueba (test-content/) referencia recursos
  * propios bajo /assets (style.css y logo.svg) sin origenes externos, ni
- * scripts inline, ni estilos inline. Por eso se usa una politica restrictiva
- * (default-src 'self'; object-src 'none'; base-uri 'self') que permite cargar
- * los recursos locales y no bloquea nada legitimo del sitio de prueba.
+ * scripts inline, ni estilos inline. La politica base es restrictiva
+ * (default-src 'self'; object-src 'none'; base-uri 'self') y se le anade
+ * connect-src con el dominio de la API (variable de entorno API_DOMAIN) para
+ * que el frontend pueda consultar archivos y estadisticas.
  */
 const SECURITY_HEADERS = {
   'Strict-Transport-Security':
@@ -25,7 +26,7 @@ const SECURITY_HEADERS = {
   'X-Content-Type-Options': 'nosniff',
   'X-Frame-Options': 'DENY',
   'Content-Security-Policy':
-    "default-src 'self'; object-src 'none'; base-uri 'self'",
+    "default-src 'self'; object-src 'none'; base-uri 'self'; connect-src 'self' https://se8mfv1cll.execute-api.us-east-1.amazonaws.com",
 };
 
 /**

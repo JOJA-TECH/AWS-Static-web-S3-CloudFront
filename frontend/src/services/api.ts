@@ -9,11 +9,12 @@
  *   nunca toca AWS directamente.
  *
  * Endpoints consumidos (implementados en terraform/modules/api):
- *   GET {API_BASE_URL}/api/files?search&type&status&sortBy&sortDir&page&pageSize
- *   GET {API_BASE_URL}/api/stats
- * Endpoints pendientes de backend: getFile, deleteFile, upload (presigned URL),
- * activity, buckets, health. Se devuelven valores seguros (vacíos) hasta que
- * existan, para no romper la UI.
+ *   GET  {API_BASE_URL}/api/files?search&type&status&sortBy&sortDir&page&pageSize
+ *   GET  {API_BASE_URL}/api/stats
+ *   POST {API_BASE_URL}/api/upload/url   -> URL prefijada de S3 (PUT directo)
+ *   POST {API_BASE_URL}/api/upload/complete -> notifica subida completada
+ *
+ * Endpoints pendientes de backend: getFile, deleteFile, activity, buckets, health.
  */
 
 import type {
@@ -110,7 +111,6 @@ export const realFilesService: FilesService = {
   },
 
   async getFile(id): Promise<FileItem | null> {
-    // No hay endpoint GET /api/files/:id aún: se busca en el listado.
     const { items } = await this.listFiles({
       page: 1,
       pageSize: 200,
@@ -121,7 +121,6 @@ export const realFilesService: FilesService = {
   },
 
   async deleteFile(_id: string): Promise<void> {
-    // No hay endpoint DELETE /api/files/:id aún.
     throw new Error('Eliminación de archivos no disponible aún (falta endpoint DELETE en la API).');
   },
 };
@@ -151,12 +150,10 @@ export const realStatsService: StatsService = {
   },
 
   async getActivity(_limit = 10): Promise<ActivityItem[]> {
-    // No hay endpoint GET /api/activity aún.
     return [];
   },
 
   async getBucketStatus(): Promise<BucketStatus[]> {
-    // No hay endpoint GET /api/buckets aún.
     return [];
   },
 
@@ -169,42 +166,53 @@ export const realStatsService: StatsService = {
 };
 
 /* ------------------------------------------------------------------ */
-/* Implementación mock de UploadService (pendiente de backend)        */
+/* Implementación real de UploadService (usa URLs prefijadas de S3)   */
 /* ------------------------------------------------------------------ */
 
-export const mockUploadService: UploadService = {
+export const realUploadService: UploadService = {
   async requestUploadUrl(file: File): Promise<{ uploadUrl: string; objectKey: string }> {
-    // Pendiente: POST /api/upload/url para obtener URL prefirmada de S3.
-    const objectKey = `cargas/${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
+    const res = await apiFetch('/api/upload/url', {
+      method: 'POST',
+      body: JSON.stringify({
+        fileName: file.name,
+        contentType: file.type,
+      }),
+    });
+    const data = await res.json();
     return {
-      uploadUrl: `${API_BASE_URL}/upload/url?objectKey=${encodeURIComponent(objectKey)}`,
-      objectKey,
+      uploadUrl: data.uploadUrl,
+      objectKey: data.objectKey,
     };
   },
 
-  async uploadFile(_file, _uploadUrl, onProgress): Promise<void> {
+  async uploadFile(file: File, uploadUrl: string, onProgress?: (progress: number) => void): Promise<void> {
     return new Promise((resolve, reject) => {
-      let progress = 0;
-      const interval = setInterval(() => {
-        progress += Math.random() * 15;
-        if (progress >= 100) {
-          progress = 100;
-          clearInterval(interval);
-          onProgress?.(100);
+      const xhr = new XMLHttpRequest();
+      xhr.open('PUT', uploadUrl, true);
+      xhr.setRequestHeader('Content-Type', file.type);
+      xhr.upload.onprogress = (ev) => {
+        if (ev.lengthComputable) {
+          onProgress?.(Math.round((ev.loaded / ev.total) * 100));
+        }
+      };
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
           resolve();
         } else {
-          onProgress?.(progress);
+          reject(new Error(`Subida falló con status ${xhr.status}`));
         }
-      }, 200);
-      setTimeout(() => {
-        clearInterval(interval);
-        reject(new Error('Tiempo de espera agotado'));
-      }, 15000);
+      };
+      xhr.onerror = () => reject(new Error('Error de red al subir'));
+      xhr.ontimeout = () => reject(new Error('Tiempo de espera agotado'));
+      xhr.send(file);
     });
   },
 
-  async notifyUploadCompleted(_objectKey: string): Promise<void> {
-    // Pendiente: POST /api/upload/complete.
+  async notifyUploadCompleted(objectKey: string): Promise<void> {
+    await apiFetch('/api/upload/complete', {
+      method: 'POST',
+      body: JSON.stringify({ objectKey }),
+    });
   },
 };
 
@@ -213,7 +221,7 @@ export const mockUploadService: UploadService = {
 /* ------------------------------------------------------------------ */
 
 export const filesService: FilesService = realFilesService;
-export const uploadService: UploadService = mockUploadService;
+export const uploadService: UploadService = realUploadService;
 export const statsService: StatsService = realStatsService;
 
 export { API_BASE_URL, ASSETS_BUCKET_PREFIX, SITE_DOMAIN };

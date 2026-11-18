@@ -12,7 +12,7 @@ def _cors():
     return {
         "Access-Control-Allow-Origin": ALLOWED_ORIGIN,
         "Access-Control-Allow-Headers": "content-type",
-        "Access-Control-Allow-Methods": "GET, OPTIONS",
+        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     }
 
 
@@ -37,6 +37,10 @@ def lambda_handler(event, context):
             return list_files(event)
         if method == "GET" and path.endswith("/api/stats"):
             return get_stats()
+        if method == "POST" and path.endswith("/api/upload/url"):
+            return request_upload_url(event)
+        if method == "POST" and path.endswith("/api/upload/complete"):
+            return upload_completed(event)
         return response(404, {"error": "not found", "path": path})
     except ClientError as e:
         return response(500, {"error": str(e)})
@@ -133,3 +137,46 @@ def _content_type(key):
         "zip": "application/zip",
     }
     return mapping.get(ext, "application/octet-stream")
+
+
+def request_upload_url(event):
+    """Genera una URL prefirmada para PUT directo a S3 (sin credenciales en el navegador)."""
+    try:
+        body = json.loads(event.get("body") or "{}")
+    except json.JSONDecodeError:
+        return response(400, {"error": "body JSON invalido"})
+
+    file_name = body.get("fileName", "archivo")
+    content_type = body.get("contentType", "application/octet-stream")
+    # Clave única bajo la carpeta de cargas
+    import time
+    object_key = f"cargas/{int(time.time()*1000)}-{file_name.replace(' ', '_')}"
+
+    try:
+        upload_url = s3.generate_presigned_url(
+            ClientMethod="put_object",
+            Params={"Bucket": BUCKET, "Key": object_key, "ContentType": content_type},
+            ExpiresIn=900,  # 15 minutos
+        )
+    except ClientError as e:
+        return response(500, {"error": str(e)})
+
+    return response(200, {
+        "uploadUrl": upload_url,
+        "objectKey": object_key,
+    })
+
+
+def upload_completed(event):
+    """Notifica que una carga se completo (registro opcional para auditoria)."""
+    try:
+        body = json.loads(event.get("body") or "{}")
+    except json.JSONDecodeError:
+        return response(400, {"error": "body JSON invalido"})
+
+    object_key = body.get("objectKey")
+    if not object_key:
+        return response(400, {"error": "objectKey requerido"})
+
+    # Aquí podría escribirse en DynamoDB o notificar a CloudFront para invalidar cache.
+    return response(200, {"ok": True, "objectKey": object_key})

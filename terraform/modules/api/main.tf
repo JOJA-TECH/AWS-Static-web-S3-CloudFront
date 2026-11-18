@@ -29,7 +29,9 @@ resource "aws_iam_role_policy" "s3_read" {
       Action = [
         "s3:ListBucket",
         "s3:GetObject",
-        "s3:GetObjectTagging"
+        "s3:GetObjectTagging",
+        "s3:PutObject",
+        "s3:PutObjectTagging"
       ]
       Resource = [
         var.bucket_arn,
@@ -104,6 +106,18 @@ resource "aws_apigatewayv2_route" "files" {
 resource "aws_apigatewayv2_route" "stats" {
   api_id    = aws_apigatewayv2_api.api.id
   route_key = "GET /api/stats"
+  target    = "integrations/${aws_apigatewayv2_integration.api.id}"
+}
+
+resource "aws_apigatewayv2_route" "upload_url" {
+  api_id    = aws_apigatewayv2_api.api.id
+  route_key = "POST /api/upload/url"
+  target    = "integrations/${aws_apigatewayv2_integration.api.id}"
+}
+
+resource "aws_apigatewayv2_route" "upload_complete" {
+  api_id    = aws_apigatewayv2_api.api.id
+  route_key = "POST /api/upload/complete"
   target    = "integrations/${aws_apigatewayv2_integration.api.id}"
 }
 
