@@ -1,13 +1,14 @@
 import { useState, useRef } from 'react';
 import { Upload, FilePlus } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
-import { useUpload } from '@/hooks/useUpload';
+import type { useUpload } from '@/hooks/useUpload';
 import { cn } from '@/lib/utils';
 
-export function DropZone() {
+type Props = Pick<ReturnType<typeof useUpload>, 'addFiles' | 'isActive'>;
+
+export function DropZone({ addFiles, isActive }: Props) {
   const [dragActive, setDragActive] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
-  const { addFiles, isActive } = useUpload();
 
   const onDrop = (e: React.DragEvent) => {
     e.preventDefault();

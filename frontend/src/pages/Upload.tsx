@@ -3,8 +3,11 @@ import { CloudUpload, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { DropZone } from '@/components/upload/DropZone';
 import { UploadQueue } from '@/components/upload/UploadQueue';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
+import { useUpload } from '@/hooks/useUpload';
 
 export default function UploadPage() {
+  const upload = useUpload();
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -27,7 +30,7 @@ export default function UploadPage() {
               <CardTitle className="text-lg">Seleccionar archivos</CardTitle>
             </CardHeader>
             <CardContent>
-              <DropZone />
+              <DropZone addFiles={upload.addFiles} isActive={upload.isActive} />
               <div className="mt-4 rounded-xl border border-neutral-200 bg-neutral-50 p-4">
                 <h4 className="text-sm font-semibold text-neutral-900 mb-2">Información importante</h4>
                 <ul className="text-sm text-neutral-600 space-y-2 list-disc pl-5">
@@ -47,7 +50,7 @@ export default function UploadPage() {
               <CardTitle className="text-lg">Estado de las cargas</CardTitle>
             </CardHeader>
             <CardContent>
-              <UploadQueue />
+              <UploadQueue {...upload} />
             </CardContent>
           </Card>
 

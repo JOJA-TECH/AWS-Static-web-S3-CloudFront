@@ -1,11 +1,12 @@
 import { Trash2 } from 'lucide-react';
-import { useUpload } from '@/hooks/useUpload';
+import type { useUpload } from '@/hooks/useUpload';
 import { UploadItem } from './UploadItem';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Button } from '@/components/ui/Button';
 
-export function UploadQueue() {
-  const { queue, retry, cancel, remove, clearCompleted, stats, error } = useUpload();
+type Props = ReturnType<typeof useUpload>;
+
+export function UploadQueue({ queue, retry, cancel, remove, clearCompleted, stats, error }: Props) {
 
   if (queue.length === 0) {
     return (
