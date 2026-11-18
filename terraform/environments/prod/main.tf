@@ -94,6 +94,21 @@ module "s3_activos" {
   ]
 }
 
+# CORS para las URLs prefirmadas: el navegador hace el PUT directo a S3.
+resource "aws_s3_bucket_cors_configuration" "activos" {
+  bucket = module.s3_activos.bucket_name
+
+  cors_rule {
+    allowed_headers = ["content-type", "x-amz-*"]
+    allowed_methods = ["GET", "HEAD", "PUT"]
+    allowed_origins = concat(
+      [for alias in local.domain_aliases : "https://${alias}"],
+      ["https://${module.cloudfront.distribution_domain_name}"],
+    )
+    max_age_seconds = 3000
+  }
+}
+
 module "s3_cargas" {
   source = "../../modules/s3"
 
