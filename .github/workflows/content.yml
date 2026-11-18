@@ -18,22 +18,23 @@ permissions:
 
 jobs:
   deploy-content:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     env:
       TF_STATE_BUCKET: ${{ secrets.TF_STATE_BUCKET }}
-      TF_STATE_LOCK_TABLE: ${{ secrets.TF_STATE_LOCK_TABLE }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v2
+        uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: "1.15.9"
           terraform_wrapper: false
 
       - name: Configure AWS credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
@@ -41,17 +42,17 @@ jobs:
       - name: Get infrastructure outputs
         id: outputs
         run: |
-          terraform init -backend-config="bucket=$TF_STATE_BUCKET" -backend-config="dynamodb_table=$TF_STATE_LOCK_TABLE"
+          terraform init -backend-config="bucket=$TF_STATE_BUCKET"
           BUCKET=$(terraform output -raw activos_bucket_name)
           DISTRIBUTION=$(terraform output -raw cloudfront_distribution_id)
-          API_ENDPOINT="$(terraform output -raw api_endpoint)/prod"
+          API_ENDPOINT="$(terraform output -raw api_endpoint)"
           echo "bucket=$BUCKET" >> $GITHUB_OUTPUT
           echo "distribution=$DISTRIBUTION" >> $GITHUB_OUTPUT
           echo "api_endpoint=$API_ENDPOINT" >> $GITHUB_OUTPUT
         working-directory: ${{ env.TF_ROOT }}
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: "20"
 

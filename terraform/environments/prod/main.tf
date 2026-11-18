@@ -167,8 +167,8 @@ module "cloudfront" {
 module "api" {
   source = "../../modules/api"
 
-  bucket_name   = module.s3_activos.bucket_name
-  bucket_arn    = module.s3_activos.bucket_arn
+  bucket_name    = module.s3_activos.bucket_name
+  bucket_arn     = module.s3_activos.bucket_arn
   allowed_origin = "*"
 }
 

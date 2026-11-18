@@ -2,8 +2,8 @@
 # del bucket de activos al frontend sin credenciales de AWS en el navegador.
 
 resource "aws_iam_role" "lambda" {
-  name               = "api-lambda-${var.bucket_name}"
-  path               = "/service-role/"
+  name = "api-lambda-${var.bucket_name}"
+  path = "/service-role/"
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
@@ -20,12 +20,12 @@ resource "aws_iam_role" "lambda" {
 }
 
 resource "aws_iam_role_policy" "s3_read" {
-  name   = "api-lambda-s3-read"
-  role   = aws_iam_role.lambda.id
+  name = "api-lambda-s3-read"
+  role = aws_iam_role.lambda.id
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
-      Effect   = "Allow"
+      Effect = "Allow"
       Action = [
         "s3:ListBucket",
         "s3:GetObject",
@@ -61,7 +61,7 @@ resource "aws_lambda_function" "api" {
 
   environment {
     variables = {
-      BUCKET_NAME = var.bucket_name
+      BUCKET_NAME    = var.bucket_name
       ALLOWED_ORIGIN = var.allowed_origin
     }
   }
@@ -77,10 +77,10 @@ resource "aws_apigatewayv2_api" "api" {
   protocol_type = "HTTP"
 
   cors_configuration {
-    allow_origins   = [var.allowed_origin]
-    allow_methods   = ["GET", "OPTIONS"]
-    allow_headers   = ["content-type"]
-    max_age = 300
+    allow_origins     = [var.allowed_origin]
+    allow_methods     = ["GET", "OPTIONS"]
+    allow_headers     = ["content-type"]
+    max_age           = 300
     allow_credentials = false
   }
 
@@ -91,9 +91,9 @@ resource "aws_apigatewayv2_api" "api" {
 }
 
 resource "aws_apigatewayv2_integration" "api" {
-  api_id            = aws_apigatewayv2_api.api.id
-  integration_type  = "AWS_PROXY"
-  integration_uri   = aws_lambda_function.api.invoke_arn
+  api_id                 = aws_apigatewayv2_api.api.id
+  integration_type       = "AWS_PROXY"
+  integration_uri        = aws_lambda_function.api.invoke_arn
   payload_format_version = "2.0"
 }
 
